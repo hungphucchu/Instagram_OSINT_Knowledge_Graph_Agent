@@ -1,0 +1,103 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "myproject"
+version = "0.1.0"
+description = "Instagram OSINT Knowledge Graph Agent — six-agent ingest pipeline + Graph-RAG query API"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "CS 6263 Team" }]
+
+# Pin every production dep. Keep in sync with requirements.txt; pip-audit reads
+# requirements.txt during preflight, so both files must agree.
+dependencies = [
+  "fastapi==0.110.3",
+  "uvicorn[standard]==0.30.0",
+  "pydantic==2.7.4",
+  "pydantic-settings==2.3.4",
+  "langgraph==0.2.74",
+  "neo4j==5.22.0",
+  "openai==1.40.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.2.2",
+  "pytest-cov==5.0.0",
+  "ruff==0.5.0",
+  "black==24.4.2",
+  "mypy==1.10.0",
+  "locust==2.29.0",
+  "pip-audit==2.7.3",
+]
+
+[project.scripts]
+# Entry points used during local development. ``myproject`` boots the API
+# server, ``instagram-osint-kg`` exposes the legacy CLI for ingest commands.
+myproject = "myproject.api:_main"
+instagram-osint-kg = "cli.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["myproject*", "agents*", "schemas*", "cli*"]
+
+[tool.setuptools]
+py-modules = ["config", "logging_context"]
+
+# ---------------------------------------------------------------------------
+# Pytest configuration
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+  "user_story: associate a test with a user story ID, e.g. @pytest.mark.user_story('US-01')",
+]
+addopts = "-q --strict-markers"
+
+# ---------------------------------------------------------------------------
+# Coverage configuration (rubric requires ≥70% on business logic)
+# ---------------------------------------------------------------------------
+[tool.coverage.run]
+source = ["src/myproject"]
+branch = true
+omit = [
+  "src/myproject/__main__.py",
+]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true
+skip_covered = false
+
+# ---------------------------------------------------------------------------
+# Ruff (lint)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = ["E501"]
+
+# ---------------------------------------------------------------------------
+# Black (format)
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+# ---------------------------------------------------------------------------
+# Mypy (types)
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = false
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+ignore_missing_imports = true

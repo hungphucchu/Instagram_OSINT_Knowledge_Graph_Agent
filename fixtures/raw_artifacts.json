@@ -1,0 +1,56 @@
+[
+  {
+    "artifact_id": "fixture-post-001",
+    "source_url": "https://www.instagram.com/p/C9DEMO001/",
+    "platform_post_id": "C9DEMO001",
+    "caption_text": "Campus meetup with @demo_user and @utsa_ai_lab #utsa #opensource #ai",
+    "collected_at": "2026-01-10T15:30:00+00:00",
+    "run_id": "11111111-1111-1111-1111-111111111111",
+    "collector_version": "fixture-0.1.0",
+    "adapter_id": "apify",
+    "hashtags": ["utsa", "opensource", "ai"],
+    "mentions": ["demo_user", "utsa_ai_lab"],
+    "raw_payload": {
+      "inputUrl": "https://www.instagram.com/utsa/",
+      "url": "https://www.instagram.com/p/C9DEMO001/",
+      "type": "Image",
+      "shortCode": "C9DEMO001",
+      "caption": "Campus meetup with @demo_user and @utsa_ai_lab #utsa #opensource #ai",
+      "hashtags": ["utsa", "opensource", "ai"],
+      "mentions": ["demo_user", "utsa_ai_lab"],
+      "commentsCount": 4,
+      "likesCount": 123,
+      "timestamp": "2026-04-20T10:15:30.000Z",
+      "ownerFullName": "UTSA Tech",
+      "ownerUsername": "utsa",
+      "ownerId": "111000999"
+    }
+  },
+  {
+    "artifact_id": "fixture-post-002",
+    "source_url": "https://www.instagram.com/p/C9DEMO002/",
+    "platform_post_id": "C9DEMO002",
+    "caption_text": "Research showcase day #machinelearning #graph #osint",
+    "collected_at": "2026-01-11T09:00:00+00:00",
+    "run_id": "11111111-1111-1111-1111-111111111111",
+    "collector_version": "fixture-0.1.0",
+    "adapter_id": "apify",
+    "hashtags": ["machinelearning", "graph", "osint"],
+    "mentions": [],
+    "raw_payload": {
+      "inputUrl": "https://www.instagram.com/humansofny/",
+      "url": "https://www.instagram.com/p/C9DEMO002/",
+      "type": "Video",
+      "shortCode": "C9DEMO002",
+      "caption": "Research showcase day #machinelearning #graph #osint",
+      "hashtags": ["machinelearning", "graph", "osint"],
+      "mentions": [],
+      "commentsCount": 2,
+      "likesCount": 87,
+      "timestamp": "2026-04-19T18:02:11.000Z",
+      "ownerFullName": "City Stories",
+      "ownerUsername": "humansofny",
+      "ownerId": "222333444"
+    }
+  }
+]

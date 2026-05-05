@@ -1,0 +1,52 @@
+# grading/traceability.yaml
+#
+# Maps every user story in docs/STORIES.md to its spec section, source modules
+# under src/myproject/, and the tests that exercise it. The grading script
+# reads this file directly. Every story ID in docs/STORIES.md must appear
+# here exactly once.
+
+- story_id: US-01
+  spec_section: "4.1 HTTP API and 4.2 Python interfaces"
+  source_modules:
+    - src/myproject/api.py
+    - src/myproject/router.py
+    - src/myproject/retriever.py
+    - src/myproject/generator.py
+  tests:
+    - tests/user_stories/test_us_01.py
+    - tests/integration/test_query_pipeline.py
+
+- story_id: US-02
+  spec_section: "4.1 HTTP API (error response 400)"
+  source_modules:
+    - src/myproject/api.py
+    - src/myproject/router.py
+  tests:
+    - tests/user_stories/test_us_02.py
+    - tests/edge/test_empty_input.py
+
+- story_id: US-03
+  spec_section: "6 Configuration; 4.1 HTTP API (503 response)"
+  source_modules:
+    - src/myproject/api.py
+    - src/myproject/router.py
+    - src/myproject/generator.py
+  tests:
+    - tests/user_stories/test_us_03.py
+
+- story_id: US-04
+  spec_section: "4.1 HTTP API (POST /api/pipeline/sample); 4.2 Python interfaces (run_sample_ingest)"
+  source_modules:
+    - src/myproject/api.py
+    - src/myproject/pipeline.py
+  tests:
+    - tests/user_stories/test_us_04.py
+    - tests/integration/test_pipeline_sample.py
+
+- story_id: US-05
+  spec_section: "4.1 HTTP API (GET /api/stats); 4.2 Python interfaces (Retriever.graph_stats)"
+  source_modules:
+    - src/myproject/api.py
+    - src/myproject/retriever.py
+  tests:
+    - tests/user_stories/test_us_05.py

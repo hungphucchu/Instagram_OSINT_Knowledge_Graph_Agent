@@ -1,0 +1,73 @@
+{
+  "headline_endpoint": "POST /api/query",
+  "thresholds": {
+    "min_requests_per_second": 10.0,
+    "max_error_rate": 0.05
+  },
+  "summary": {
+    "request_count": 3712,
+    "failure_count": 0,
+    "requests_per_second": 62.56252185247095,
+    "error_rate": 0.0,
+    "status": "ok",
+    "p50_ms": 9.0,
+    "p95_ms": 21.0,
+    "p99_ms": 43.0,
+    "average_response_time_ms": 11.965344459859924,
+    "max_response_time_ms": 601.4967250000041
+  },
+  "raw": {
+    "stats_rows": [
+      {
+        "Type": "POST",
+        "Name": "POST /api/query",
+        "Request Count": "3712",
+        "Failure Count": "0",
+        "Median Response Time": "9",
+        "Average Response Time": "11.965344459859924",
+        "Min Response Time": "5.1965650000056485",
+        "Max Response Time": "601.4967250000041",
+        "Average Content Size": "615.075161637931",
+        "Requests/s": "62.56252185247095",
+        "Failures/s": "0.0",
+        "50%": "9",
+        "66%": "11",
+        "75%": "12",
+        "80%": "13",
+        "90%": "16",
+        "95%": "21",
+        "98%": "31",
+        "99%": "43",
+        "99.9%": "590",
+        "99.99%": "600",
+        "100%": "600"
+      },
+      {
+        "Type": "",
+        "Name": "Aggregated",
+        "Request Count": "3712",
+        "Failure Count": "0",
+        "Median Response Time": "9",
+        "Average Response Time": "11.965344459859924",
+        "Min Response Time": "5.1965650000056485",
+        "Max Response Time": "601.4967250000041",
+        "Average Content Size": "615.075161637931",
+        "Requests/s": "62.56252185247095",
+        "Failures/s": "0.0",
+        "50%": "9",
+        "66%": "11",
+        "75%": "12",
+        "80%": "13",
+        "90%": "16",
+        "95%": "21",
+        "98%": "31",
+        "99%": "43",
+        "99.9%": "590",
+        "99.99%": "600",
+        "100%": "600"
+      }
+    ],
+    "failure_rows": [],
+    "exception_rows": []
+  }
+}

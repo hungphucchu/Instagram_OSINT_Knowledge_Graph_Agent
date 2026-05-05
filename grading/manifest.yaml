@@ -1,0 +1,43 @@
+# grading/manifest.yaml
+#
+# Pinned environment manifest. The grading script reads this to identify the
+# exact configuration that produced the headline numbers reported in
+# README.md and docs/REPRODUCE.md. Update this file every time a pinned
+# version changes.
+
+python_version: "3.11.9"
+
+# Random seed used throughout the application. The ingest pipeline and
+# deduplication agents read this seed (passed via the LangGraph state) and
+# propagate it to any source of randomness they touch.
+seed: 42
+
+# Models used by the application. Pin by id and (where applicable) revision.
+model_ids:
+  - provider: utsa
+    model: Qwen/Qwen3-8B
+    base_url: "http://149.165.171.140:8888/v1"
+    purpose: "NL → Cypher translation and answer synthesis (query path)"
+  - provider: utsa
+    model: meta-llama/Llama-3.1-8B-Instruct
+    base_url: "http://149.165.173.247:8888/v1"
+    purpose: "entity / relation extraction (ingest path); LLM-as-judge quality fallback"
+  - provider: anthropic
+    model: claude-opus-4-5-20251101
+    purpose: "rubric spec-regeneration test only (scripts/regenerate.sh)"
+
+# Datasets pinned by version or sha256.
+dataset_versions:
+  - name: repo_fixture
+    path: fixtures/raw_artifacts.json
+    version: "1.0"
+    sha256: "4b1df1700ec0e0a4699f3423af1d07313ec549122253f59f88db628fc9f42756"
+
+  - name: apify_instagram_export
+    description: "optional Apify scraper export staged under apify_data/"
+    version: "varies per ingest run"
+    sha256: "n/a (export is run-specific)"
+
+# Commit hash the team intends the TA to grade. `scripts/reproduce.sh` refreshes
+# this automatically when the repo has a real HEAD commit.
+commit_sha: "NO_GIT_HEAD_AVAILABLE"

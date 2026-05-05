@@ -1,0 +1,4 @@
+All application models are API-hosted. No local checkpoint download is required.
+Replay mode disables the query LLM (`QUERY_LLM_ENABLED=false`) so the
+headline endpoint can be exercised deterministically without paid inference.
+See docs/MODELS.md and grading/manifest.yaml for pinned model provenance.

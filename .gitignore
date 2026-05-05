@@ -1,0 +1,65 @@
+# Secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Virtualenvs (kept out of the repo image)
+.venv/
+.venv-*/
+venv/
+tf-env-310/
+tf-env-*/
+
+# Data and models — must be downloadable, never committed
+data/
+models/
+apify_cache/
+
+# Optional local offline exports / scratch datasets
+# Keep this ignored by default; if the team intentionally wants to submit a
+# specific offline export, force-add that one file explicitly.
+apify_data/*.json
+
+# Generated artifacts from regeneration / local experiments
+regenerated/
+regenerated_qwen/
+
+# Reports:
+# Keep rubric-facing summary artifacts trackable, but ignore bulky or purely
+# local/generated derivatives.
+reports/coverage_html/
+reports/coverage.xml
+reports/loadtest*
+reports/*.csv
+reports/regenerated*.xml
+
+# Local report scratch / historical outputs that are usually not worth
+# committing unless specifically requested.
+reports/quality_*.json
+reports/quarantine_*.json
+
+# Keep the reports directory itself available for tracked artifacts.
+!reports/.gitkeep
+
+# Front-end build output
+web/.next/
+web/node_modules/
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

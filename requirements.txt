@@ -1,0 +1,29 @@
+# Runtime dependencies — pinned per the Reproducibility Manifest rubric.
+# Mirrored in pyproject.toml [project.dependencies] for pip-audit compatibility.
+
+# Web framework
+fastapi==0.110.3
+uvicorn[standard]==0.30.0
+
+# Configuration / validation
+pydantic==2.7.4
+pydantic-settings==2.3.4
+
+# Pipeline orchestration
+langgraph==0.2.74
+
+# Graph store
+neo4j==5.22.0
+
+# LLM client (OpenAI-compatible endpoints, used for extraction + query)
+openai==1.40.0
+
+# Test / lint / load tooling — installed in the same image so `make test`,
+# `make lint`, `make loadtest`, `pip-audit` all work inside the container.
+pytest==8.2.2
+pytest-cov==5.0.0
+ruff==0.5.0
+black==24.4.2
+mypy==1.10.0
+locust==2.29.0
+pip-audit==2.7.3
