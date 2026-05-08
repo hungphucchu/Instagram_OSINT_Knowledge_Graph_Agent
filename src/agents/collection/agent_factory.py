@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from config import Settings
+
 from agents.collection.apify_cache_store import ApifyCacheStore
 from agents.collection.apify_client import ApifyClient
 from agents.collection.apify_data_source_adapter import ApifyDataSourceAdapter
@@ -9,7 +11,6 @@ from agents.collection.apify_source_adapter import ApifySourceAdapter
 from agents.collection.collection_agent import CollectionAgent
 from agents.collection.fixture_source_adapter import FixtureSourceAdapter
 from agents.collection.raw_artifact_store import RawArtifactStore
-from config import Settings
 
 
 def build_collection_agent(

@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from langgraph.graph import END, START, StateGraph
+from logging_context import new_run_id
+from schemas.quality_report import QualityReport
 
 from agents.collection.models import CollectionRunConfig, CollectionRunResult
 from agents.deduplication.models import DedupRunResult
@@ -12,8 +14,6 @@ from agents.extraction.extraction_agent import ExtractionRunResult
 from agents.graph_insertion.models import GraphInsertionRunResult
 from agents.pipeline.runtime import PipelineRuntime
 from agents.pipeline.state import PipelineInput, PipelineState
-from logging_context import new_run_id
-from schemas.quality_report import QualityReport
 
 
 def _serialize_collection(r: CollectionRunResult) -> dict[str, Any]:
@@ -258,6 +258,4 @@ def pipeline_succeeded(final_state: PipelineState) -> bool:
     if collected > 0 and written == 0:
         return False
     gi = final_state.get("graph_insert") or {}
-    if gi.get("status") != "completed" or gi.get("error_message"):
-        return False
-    return True
+    return not (gi.get("status") != "completed" or gi.get("error_message"))

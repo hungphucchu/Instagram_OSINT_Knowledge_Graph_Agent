@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from agents.collection.raw_artifact_store import RawArtifactStore
 from agents.deduplication.dedup_store import DedupStore
@@ -32,7 +32,7 @@ class GraphInsertionAgent:
         self._dedup_store = dedup_store
 
     def run(self, *, run_id: str) -> GraphInsertionRunResult:
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         created_nodes = 0
         updated_nodes = 0
         created_rels = 0
@@ -197,7 +197,7 @@ class GraphInsertionAgent:
         except Exception as exc:
             status = "failed"
             error_message = str(exc)
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return GraphInsertionRunResult(
             run_id=run_id,
             status=status,

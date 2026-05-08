@@ -7,11 +7,12 @@ import logging
 import re
 from typing import Any, Protocol
 
+from config import Settings
+from logging_context import new_run_id
+
 from agents.extraction.llm_client import LLMClient
 from agents.query.cypher_guard import verify_read_only_cypher
 from agents.query.models import QueryRequest, QueryResponse
-from config import Settings
-from logging_context import new_run_id
 
 
 class GraphQueryStore(Protocol):
@@ -469,11 +470,11 @@ class QueryAgent:
 
     @staticmethod
     def _to_json_safe(value: Any) -> Any:
-        if value is None or isinstance(value, (str, int, float, bool)):
+        if value is None or isinstance(value, str | int | float | bool):
             return value
         if isinstance(value, dict):
             return {str(k): QueryAgent._to_json_safe(v) for k, v in value.items()}
-        if isinstance(value, (list, tuple, set)):
+        if isinstance(value, list | tuple | set):
             return [QueryAgent._to_json_safe(v) for v in value]
         # Neo4j Node/Relationship are mapping-like; dict(value) usually returns properties.
         try:

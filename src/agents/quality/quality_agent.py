@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from config import Settings
+from schemas.quality_report import QualityReport, QualityViolation
 
 from agents.collection.raw_artifact_store import RawArtifactStore
 from agents.extraction.extraction_store import ExtractionStore
 from agents.quality.deterministic_checks import evaluate_deterministic
 from agents.quality.llm_judge import JudgeSample, QualityLLMJudge
-from config import Settings
-from schemas.quality_report import QualityReport, QualityViolation
 
 
 class QualityAgent:
@@ -52,7 +53,7 @@ class QualityAgent:
         fail_on_warn = self._settings.quality_fail_on_warning
         gate_passed = len(critical) == 0 and (not fail_on_warn or len(warn) == 0)
 
-        evaluated_at = datetime.now(timezone.utc)
+        evaluated_at = datetime.now(UTC)
         report_dir = Path(self._settings.quality_report_dir)
         report_dir.mkdir(parents=True, exist_ok=True)
         stamp = evaluated_at.strftime("%Y%m%dT%H%M%SZ")

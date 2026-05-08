@@ -16,10 +16,11 @@ from agents.graph_insertion import GraphInsertionAgent, Neo4jGraphStore
 from agents.graph_insertion.neo4j_dev import wipe_all_graph_data
 from agents.pipeline import PipelineInput, PipelineRuntime, pipeline_succeeded, run_linear_pipeline
 from agents.query import QueryAgent, QueryRequest
-from cli.dev_reset import run_local_reset
 from config import get_settings
 from logging_context import new_run_id
 from schemas.raw_artifact import RawArtifact
+
+from cli.dev_reset import run_local_reset
 
 __version__ = "0.1.0"
 
@@ -117,15 +118,8 @@ def cmd_collect(*, max_items: int | None, usernames: list[str], verbose: bool) -
         store = RawArtifactStore(db_path=s.collection_db_path)
         rows_for_run = store.list_by_run(run_id=result.run_id)
     print(
-        "run_id={run_id} status={status} artifacts_collected={count} "
-        "artifacts_skipped_unchanged={skipped} started_at={started} finished_at={finished}".format(
-            run_id=result.run_id,
-            status=result.status,
-            count=result.artifacts_collected,
-            skipped=result.artifacts_skipped_unchanged,
-            started=result.started_at.isoformat(),
-            finished=result.finished_at.isoformat(),
-        )
+        f"run_id={result.run_id} status={result.status} artifacts_collected={result.artifacts_collected} "
+        f"artifacts_skipped_unchanged={result.artifacts_skipped_unchanged} started_at={result.started_at.isoformat()} finished_at={result.finished_at.isoformat()}"
     )
     if verbose:
         sample_ids = ", ".join(x.artifact_id for x in rows_for_run[:3]) or "-"
@@ -164,13 +158,7 @@ def cmd_extract(*, run_id: str, verbose: bool, show_relations: bool) -> int:
         )
     result = agent.run(run_id=run_id)
     print(
-        "run_id={run_id} status={status} records_written={count} mode={mode} extractor_model_id={model}".format(
-            run_id=result.run_id,
-            status=result.status,
-            count=result.records_written,
-            mode=result.mode,
-            model=result.extractor_model_id,
-        )
+        f"run_id={result.run_id} status={result.status} records_written={result.records_written} mode={result.mode} extractor_model_id={result.extractor_model_id}"
     )
     if verbose:
         rows = extraction_store.list_by_run(run_id=result.run_id)
@@ -224,12 +212,7 @@ def cmd_dedup(*, run_id: str, verbose: bool, show_pairs: bool) -> int:
         )
     result = agent.run(run_id=run_id)
     print(
-        "run_id={run_id} status={status} clusters_written={count} embedding_backend={backend}".format(
-            run_id=result.run_id,
-            status=result.status,
-            count=result.clusters_written,
-            backend=result.embedding_backend,
-        )
+        f"run_id={result.run_id} status={result.status} clusters_written={result.clusters_written} embedding_backend={result.embedding_backend}"
     )
     report = dedup_store.get_by_run(run_id=result.run_id)
     if verbose and report is not None:
@@ -241,12 +224,7 @@ def cmd_dedup(*, run_id: str, verbose: bool, show_pairs: bool) -> int:
         print("sample_clusters:")
         for cluster in report.clusters[:5]:
             print(
-                "- canonical_id={cid} canonical_surface={surface} aliases={aliases} mentions={mentions}".format(
-                    cid=cluster.canonical_id,
-                    surface=cluster.canonical_surface,
-                    aliases=len(cluster.aliases),
-                    mentions=len(cluster.mention_ids),
-                )
+                f"- canonical_id={cluster.canonical_id} canonical_surface={cluster.canonical_surface} aliases={len(cluster.aliases)} mentions={len(cluster.mention_ids)}"
             )
         if not report.clusters:
             print("- (no clusters found)")
@@ -310,17 +288,9 @@ def cmd_graph_insert(*, run_id: str, verbose: bool) -> int:
         )
     result = agent.run(run_id=run_id)
     print(
-        "run_id={run_id} status={status} backend={backend} "
-        "nodes_created={nc} nodes_updated={nu} "
-        "relationships_created={rc} relationships_updated={ru}".format(
-            run_id=result.run_id,
-            status=result.status,
-            backend=result.backend,
-            nc=result.nodes_created,
-            nu=result.nodes_updated,
-            rc=result.relationships_created,
-            ru=result.relationships_updated,
-        )
+        f"run_id={result.run_id} status={result.status} backend={result.backend} "
+        f"nodes_created={result.nodes_created} nodes_updated={result.nodes_updated} "
+        f"relationships_created={result.relationships_created} relationships_updated={result.relationships_updated}"
     )
     if verbose:
         print(f"neo4j_uri={s.neo4j_uri}")

@@ -6,14 +6,15 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+from schemas.extraction_record import ExtractionRecord
+from schemas.raw_artifact import RawArtifact
 
 from agents.collection.raw_artifact_store import RawArtifactStore
 from agents.extraction.extraction_store import ExtractionStore
 from agents.extraction.heuristic_extractor import HeuristicExtractor
 from agents.extraction.llm_extractor import LLMExtractor
-from schemas.extraction_record import ExtractionRecord
-from schemas.raw_artifact import RawArtifact
 
 
 @dataclass(frozen=True)
@@ -59,7 +60,7 @@ class ExtractionAgent:
         self._log = logging.getLogger("extraction.agent")
 
     def run(self, *, run_id: str) -> ExtractionRunResult:
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         try:
             artifacts = self._raw_store.list_by_run(run_id)
             records = self._extract_records_parallel(run_id=run_id, artifacts=artifacts)
@@ -71,7 +72,7 @@ class ExtractionAgent:
             status = "failed"
             error_message = str(exc)
 
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return ExtractionRunResult(
             run_id=run_id,
             status=status,

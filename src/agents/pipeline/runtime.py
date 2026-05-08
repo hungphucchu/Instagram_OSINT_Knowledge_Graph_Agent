@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from config import Settings
+
 from agents.collection import CollectionAgent, RawArtifactStore
 from agents.collection.agent_factory import build_collection_agent
 from agents.deduplication import DedupAgent, DedupStore
 from agents.extraction import ExtractionAgent, ExtractionStore
 from agents.graph_insertion import GraphInsertionAgent
 from agents.quality.quality_agent import QualityAgent
-from config import Settings
 
 
 @dataclass(frozen=True)

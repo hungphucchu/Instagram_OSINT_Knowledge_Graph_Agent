@@ -7,10 +7,11 @@ import logging
 import re
 from typing import Any
 
-from agents.extraction.heuristic_extractor import HeuristicExtractor
-from agents.extraction.llm_client import LLMClient
 from schemas.extraction_record import ExtractedEntity, ExtractedRelation
 from schemas.raw_artifact import RawArtifact
+
+from agents.extraction.heuristic_extractor import HeuristicExtractor
+from agents.extraction.llm_client import LLMClient
 
 _MAX_CAPTION_CHARS = 1500
 _MAX_OUTPUT_TOKENS = 1536
@@ -158,7 +159,7 @@ class LLMExtractor:
             return True
         if module.startswith("httpx") or module.startswith("httpcore"):
             return True
-        return isinstance(exc, (OSError, ConnectionError))
+        return isinstance(exc, OSError | ConnectionError)
 
     def _parse_response_json(
         self, response: Any

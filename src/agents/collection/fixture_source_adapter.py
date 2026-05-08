@@ -7,10 +7,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from schemas.raw_artifact import RawArtifact
+
 from agents.collection.fetch_limits import clamp_fetch_count
 from agents.collection.models import CollectionRunConfig
 from agents.collection.source_adapter import SourceAdapter
-from schemas.raw_artifact import RawArtifact
 
 
 class FixtureSourceAdapter(SourceAdapter):
@@ -37,7 +38,7 @@ class FixtureSourceAdapter(SourceAdapter):
     def _row_to_artifact(self, *, row: dict[str, Any], config: CollectionRunConfig) -> RawArtifact:
         base = RawArtifact.model_validate(row)
         stable = hashlib.sha256(
-            f"{base.platform_post_id}:{base.source_url}:{config.run_id}".encode("utf-8")
+            f"{base.platform_post_id}:{base.source_url}:{config.run_id}".encode()
         ).hexdigest()[:24]
         return base.model_copy(
             update={

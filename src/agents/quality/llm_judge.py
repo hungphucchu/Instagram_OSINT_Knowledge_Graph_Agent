@@ -9,10 +9,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
 
-from agents.extraction.llm_client import LLMClient
 from schemas.extraction_record import ExtractionRecord
 from schemas.quality_report import QualityViolation, SuggestedFix
 from schemas.raw_artifact import RawArtifact
+
+from agents.extraction.llm_client import LLMClient
 
 
 @dataclass(frozen=True)
@@ -248,10 +249,7 @@ class QualityLLMJudge:
             score = 1.0 if not issues else 0.0
         score = max(0.0, min(1.0, score))
         raw_pass = parsed.get("pass")
-        if isinstance(raw_pass, bool):
-            passed = raw_pass
-        else:
-            passed = not issues
+        passed = raw_pass if isinstance(raw_pass, bool) else not issues
         return {"pass": passed, "score": score, "issues": issues}
 
     @staticmethod
@@ -272,7 +270,7 @@ class QualityLLMJudge:
             return True
         if module.startswith("httpx") or module.startswith("httpcore"):
             return True
-        return isinstance(exc, (OSError, ConnectionError))
+        return isinstance(exc, OSError | ConnectionError)
 
     @staticmethod
     def _strip_reasoning_tags(text: str) -> str:

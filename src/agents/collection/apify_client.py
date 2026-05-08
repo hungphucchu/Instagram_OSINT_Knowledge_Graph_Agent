@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from urllib import error, request
 
 from agents.collection.apify_cache_store import ApifyCacheStore

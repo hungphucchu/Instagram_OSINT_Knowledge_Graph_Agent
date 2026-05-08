@@ -7,7 +7,7 @@ import math
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from agents.deduplication.dedup_store import DedupStore
 from agents.deduplication.models import (
@@ -62,7 +62,7 @@ class DedupAgent:
         self._char_ngram_n = max(2, char_ngram_n)
 
     def run(self, *, run_id: str) -> DedupRunResult:
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         try:
             records = self._extraction_store.list_by_run(run_id)
             report = self._build_report(run_id=run_id, records=records)
@@ -73,7 +73,7 @@ class DedupAgent:
             written = 0
             status = "failed"
             error_message = str(exc)
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return DedupRunResult(
             run_id=run_id,
             status=status,
@@ -121,7 +121,7 @@ class DedupAgent:
                         action = "review"
                     audit_log.append(
                         DedupAuditEntry(
-                            timestamp=datetime.now(timezone.utc),
+                            timestamp=datetime.now(UTC),
                             mention_id_a=a.mention_id,
                             mention_id_b=b.mention_id,
                             action=action,

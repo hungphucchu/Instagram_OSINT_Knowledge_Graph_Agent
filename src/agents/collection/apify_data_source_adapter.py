@@ -5,14 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from schemas.raw_artifact import RawArtifact
 
 from agents.collection.fetch_limits import clamp_fetch_count
 from agents.collection.models import CollectionRunConfig
 from agents.collection.source_adapter import SourceAdapter
-from schemas.raw_artifact import RawArtifact
 
 _HASHTAG_RE = re.compile(r"#([A-Za-z0-9_]+)")
 _MENTION_RE = re.compile(r"@([A-Za-z0-9._]+)")
@@ -64,7 +65,7 @@ class ApifyDataSourceAdapter(SourceAdapter):
         collected_at = self._parse_collected_at(item.get("timestamp"))
 
         stable = hashlib.sha256(
-            f"{platform_post_id}:{source_url}:{config.run_id}".encode("utf-8")
+            f"{platform_post_id}:{source_url}:{config.run_id}".encode()
         ).hexdigest()[:24]
         return RawArtifact(
             artifact_id=f"apifydata-{stable}",
@@ -94,4 +95,4 @@ class ApifyDataSourceAdapter(SourceAdapter):
                 return datetime.fromisoformat(normalized)
             except ValueError:
                 pass
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)

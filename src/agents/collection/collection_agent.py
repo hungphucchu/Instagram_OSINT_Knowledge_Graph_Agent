@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
+
+from schemas.raw_artifact import RawArtifact
 
 from agents.collection.content_fingerprint import raw_post_fingerprint, stable_artifact_id
 from agents.collection.models import CollectionRunConfig, CollectionRunResult
 from agents.collection.raw_artifact_store import RawArtifactStore
 from agents.collection.source_adapter import SourceAdapter
-from schemas.raw_artifact import RawArtifact
 
 
 class CollectionAgent:
@@ -20,7 +21,7 @@ class CollectionAgent:
         self._store = store
 
     def run(self, config: CollectionRunConfig) -> CollectionRunResult:
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         skipped_unchanged = 0
         try:
             fetched = self._adapter.fetch(config=config)
@@ -54,7 +55,7 @@ class CollectionAgent:
             status = "failed"
             error_message = str(exc)
 
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return CollectionRunResult(
             run_id=config.run_id,
             status=status,

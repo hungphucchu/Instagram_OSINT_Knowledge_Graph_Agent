@@ -5,9 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Protocol
 
+from schemas.quality_report import QualityViolation
+
 from agents.collection.raw_artifact_store import RawArtifactStore
 from agents.extraction.extraction_store import ExtractionStore
-from schemas.quality_report import QualityViolation
 
 _MAX_SAMPLE_IDS = 50
 _ORPHAN_CRITICAL_THRESHOLD = 100

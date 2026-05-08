@@ -5,14 +5,15 @@ from __future__ import annotations
 import hashlib
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
+
+from schemas.raw_artifact import RawArtifact
 
 from agents.collection.apify_client import ApifyClient
 from agents.collection.fetch_limits import clamp_fetch_count
 from agents.collection.models import CollectionRunConfig
 from agents.collection.source_adapter import SourceAdapter
-from schemas.raw_artifact import RawArtifact
 
 _HASHTAG_RE = re.compile(r"#([A-Za-z0-9_]+)")
 _MENTION_RE = re.compile(r"@([A-Za-z0-9._]+)")
@@ -120,14 +121,14 @@ class ApifySourceAdapter(SourceAdapter):
         mentions = self._normalized_list(item.get("mentions")) or _MENTION_RE.findall(caption_text)
 
         stable = hashlib.sha256(
-            f"{platform_post_id}:{source_url}:{config.run_id}".encode("utf-8")
+            f"{platform_post_id}:{source_url}:{config.run_id}".encode()
         ).hexdigest()[:24]
         return RawArtifact(
             artifact_id=f"apify-{stable}",
             source_url=source_url,
             platform_post_id=platform_post_id,
             caption_text=caption_text,
-            collected_at=datetime.now(timezone.utc),
+            collected_at=datetime.now(UTC),
             run_id=config.run_id,
             collector_version=config.collector_version,
             adapter_id=self.adapter_id,

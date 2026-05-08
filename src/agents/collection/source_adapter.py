@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from agents.collection.models import CollectionRunConfig
 from schemas.raw_artifact import RawArtifact
+
+from agents.collection.models import CollectionRunConfig
 
 
 class SourceAdapter(ABC):

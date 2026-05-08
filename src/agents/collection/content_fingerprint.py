@@ -25,7 +25,7 @@ def raw_post_fingerprint(artifact: RawArtifact) -> str:
 def stable_artifact_id(artifact: RawArtifact, content_fp: str) -> str:
     """Artifact id keyed by adapter + post identity + content (not pipeline run_id)."""
     h = hashlib.sha256(
-        f"{artifact.adapter_id}:{artifact.platform_post_id}:{artifact.source_url}:{content_fp}".encode("utf-8")
+        f"{artifact.adapter_id}:{artifact.platform_post_id}:{artifact.source_url}:{content_fp}".encode()
     ).hexdigest()[:24]
     safe = re.sub(r"[^0-9A-Za-z_]+", "_", artifact.adapter_id).strip("_")[:12] or "src"
     return f"{safe}-{h}"

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 
 class ApifyCacheStore:
@@ -30,7 +31,7 @@ class ApifyCacheStore:
         cache_key = self._cache_key(endpoint=endpoint, payload=payload)
         envelope: dict[str, Any] = {
             "cache_key": cache_key,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "request": {"endpoint": endpoint, "payload": payload},
             "response": response,
         }
@@ -57,7 +58,7 @@ class ApifyCacheStore:
         if not self._is_cacheable_response(response):
             envelope = {
                 "cache_key": self._cache_key(endpoint=endpoint, payload=payload),
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
                 "request": {"endpoint": endpoint, "payload": payload},
                 "response": response,
             }
@@ -91,7 +92,4 @@ class ApifyCacheStore:
         if status in {"error", "fail", "failed"}:
             return False
 
-        if "error" in response or "errors" in response:
-            return False
-
-        return True
+        return not ("error" in response or "errors" in response)

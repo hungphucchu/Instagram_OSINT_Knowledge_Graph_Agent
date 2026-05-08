@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,8 +14,6 @@ class Settings(BaseSettings):
     """Single configuration surface for Phase 0; extended in later phases."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
         extra="ignore",
         # Allow `Settings(collection_db_path=...)` in tests; aliases still map env vars.
         populate_by_name=True,
@@ -120,11 +118,17 @@ class Settings(BaseSettings):
         le=1.0,
         validation_alias="QUALITY_LLM_MIN_SCORE_THRESHOLD",
     )
-    query_llm_enabled: bool = Field(default=False, validation_alias="QUERY_LLM_ENABLED")
+    query_llm_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("query_llm_enabled", "QUERY_LLM_ENABLED"),
+    )
     query_llm_provider: str = Field(default="openai", validation_alias="QUERY_LLM_PROVIDER")
     query_llm_model: str = Field(default="gpt-4o-mini", validation_alias="QUERY_LLM_MODEL")
     query_llm_base_url: str = Field(default="https://api.openai.com/v1", validation_alias="QUERY_LLM_BASE_URL")
-    query_llm_api_key: str = Field(default="", validation_alias="QUERY_LLM_API_KEY")
+    query_llm_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("query_llm_api_key", "QUERY_LLM_API_KEY"),
+    )
     query_llm_timeout_seconds: int = Field(default=60, validation_alias="QUERY_LLM_TIMEOUT_SECONDS")
     query_max_limit: int = Field(default=50, ge=1, le=2000, validation_alias="QUERY_MAX_LIMIT")
     query_max_evidence_rows: int = Field(default=20, ge=1, le=200, validation_alias="QUERY_MAX_EVIDENCE_ROWS")
@@ -175,4 +179,6 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    # Runtime settings should read .env; tests can instantiate Settings(...) directly
+    # without inheriting local developer secrets.
+    return Settings(_env_file=".env", _env_file_encoding="utf-8")
