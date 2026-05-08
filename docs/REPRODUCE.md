@@ -1,8 +1,5 @@
 # Reproducibility Procedure
 
-> The TA runs `make reproduce` to verify the headline numbers reported in
-> `README.md`. This document tells the TA what to expect.
-
 ## Procedure
 
 ```bash
@@ -25,7 +22,7 @@ make reproduce
    and `coverage.xml`.
 7. Runs the 60-second Locust load test against `POST /api/query` and writes
    `reports/benchmarks.json`.
-8. Leaves the compose stack up for manual inspection; the TA may later run
+8. Leaves the compose stack up for manual inspection; the reviewer may later run
    `docker compose down`.
 
 ## Hardware Profile
@@ -67,12 +64,12 @@ After `make reproduce` completes, the following files exist:
 
 | Metric                                       | Expected | Tolerance | Where measured                              |
 | -------------------------------------------- | -------- | --------- | ------------------------------------------- |
-| Sample pipeline raw artifacts ingested       | 3        | exact     | stdout of `python -m myproject.pipeline`    |
-| Sample pipeline extraction records written   | 3        | ± 1       | same                                        |
-| Sample pipeline dedup clusters               | 2        | ± 1       | same                                        |
-| Test coverage on `src/myproject/`            | 0.75     | ± 0.05    | `reports/coverage.xml` (`line-rate` attr)   |
+| Sample pipeline raw artifacts ingested       | 2        | exact     | stdout of `python -m myproject.pipeline`    |
+| Sample pipeline extraction records written   | 2        | exact     | same                                        |
+| Sample pipeline dedup clusters               | 10       | exact     | same                                        |
+| Test coverage on `src/myproject/`            | 0.86     | ± 0.05    | `reports/coverage.xml` (`line-rate` attr)   |
 | User-story test pass rate                    | 1.00     | ≥ 0.90    | `reports/user_stories.xml`                  |
-| `POST /api/query` p95 latency (LLM disabled) | 240 ms   | ± 100 ms  | `reports/benchmarks.json`                   |
+| `POST /api/query` p95 latency (LLM disabled) | 21 ms    | ± 100 ms  | `reports/benchmarks.json`                   |
 | Sustained load throughput                    | ≥ 10 rps | exact     | `reports/benchmarks.json`                   |
 | Load-test error rate (60 s window)           | < 5 %    | exact     | `reports/benchmarks.json`                   |
 

@@ -36,7 +36,7 @@ class Settings(BaseSettings):
         validation_alias="COLLECTION_DB_PATH",
     )
     apify_data_path: Path = Field(
-        default=Path("apify_data/dataset.json"),
+        default=Path("apify_data/input.json"),
         validation_alias="APIFY_DATA_PATH",
     )
     apify_api_token: str = Field(default="", validation_alias="APIFY_API_TOKEN")
@@ -168,7 +168,7 @@ class Settings(BaseSettings):
             if getattr(info, "field_name", "") == "quality_report_dir":
                 return Path("reports")
             if getattr(info, "field_name", "") == "apify_data_path":
-                return Path("apify_data/dataset.json")
+                return Path("apify_data/input.json")
             return Path("fixtures/raw_artifacts.json")
         return Path(v)
 

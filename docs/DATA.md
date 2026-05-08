@@ -1,9 +1,5 @@
 # Datasets
 
-> Every dataset used by the project is listed here with source, version,
-> license, and how to fetch it. Datasets are **not** committed to the repo
-> beyond a tiny synthetic fixture used by tests.
-
 ## Dataset 1: Repo fixture (synthetic Instagram posts)
 
 - **Source:** in-tree at `fixtures/raw_artifacts.json`
@@ -38,7 +34,7 @@ For reproducing a larger offline ingest without spending Apify credits:
   team at run time and stored locally under `apify_data/`.
 - **Hash:** run-specific; compute with
   ```bash
-  shasum -a 256 apify_data/dataset.json
+  shasum -a 256 apify_data/input.json
   ```
 - **License:** subject to Apify's terms and Instagram's TOS. The project
   only ingests **public** posts.
@@ -49,13 +45,27 @@ For reproducing a larger offline ingest without spending Apify credits:
 ```bash
 # Preferred offline replay path from a previously saved export:
 COLLECTION_MODE=apify_data \
-  APIFY_DATA_PATH=apify_data/dataset.json \
+  APIFY_DATA_PATH=apify_data/input.json \
   python -m cli collect
 ```
 
 The official graded replay path does **not** call the live Apify API. `make
 reproduce` uses the bundled fixture dataset, and `apify_data/` is only an
 offline extension point.
+
+### Why we do not call live Apify by default
+
+Live Apify runs cost credits, so this project does not require repeated paid
+API calls for normal development, grading, or reproducibility. The team uses
+one initial collection/export and stores the resulting file at
+`apify_data/input.json`, then replays that offline file for all subsequent
+ingest runs.
+
+This gives three benefits:
+
+* predictable cost (no repeated paid calls),
+* deterministic replay (same input file for everyone),
+* easier grading (no dependency on external API availability during checks).
 
 ### Preprocessing
 

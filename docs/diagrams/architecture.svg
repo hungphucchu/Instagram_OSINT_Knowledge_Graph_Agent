@@ -17,7 +17,7 @@
     </style>
   </defs>
 
-  <text x="40" y="32" class="header">Instagram OSINT Knowledge Graph Agent  system architecture</text>
+  <text x="40" y="32" class="header">Instagram OSINT Knowledge Graph Agent - system architecture</text>
 
   <!-- Ingest pipeline group -->
   <rect class="group" x="30" y="60" width="1040" height="200" />
@@ -26,27 +26,27 @@
   <rect class="box ingest" x="50"  y="110" width="160" height="80"/>
   <text x="60"  y="138" class="title">1. Collection</text>
   <text x="60"  y="160" class="label">Apify / fixture</text>
-  <text x="60"  y="178" class="label">’ RawArtifactStore</text>
+  <text x="60"  y="178" class="label">-> RawArtifactStore</text>
 
   <rect class="box ingest" x="240" y="110" width="160" height="80"/>
   <text x="250" y="138" class="title">2. Extraction</text>
   <text x="250" y="160" class="label">LLM / heuristic</text>
-  <text x="250" y="178" class="label">’ ExtractionStore</text>
+  <text x="250" y="178" class="label">-> ExtractionStore</text>
 
   <rect class="box ingest" x="430" y="110" width="160" height="80"/>
   <text x="440" y="138" class="title">3. Deduplication</text>
   <text x="440" y="160" class="label">char-ngram + fuzzy</text>
-  <text x="440" y="178" class="label">’ DedupStore</text>
+  <text x="440" y="178" class="label">-> DedupStore</text>
 
   <rect class="box ingest" x="620" y="110" width="160" height="80"/>
   <text x="630" y="138" class="title">4. Graph insertion</text>
   <text x="630" y="160" class="label">idempotent MERGE</text>
-  <text x="630" y="178" class="label">’ Neo4j</text>
+  <text x="630" y="178" class="label">-> Neo4j</text>
 
   <rect class="box ingest" x="810" y="110" width="240" height="80"/>
   <text x="820" y="138" class="title">5. Quality (gate)</text>
   <text x="820" y="160" class="label">deterministic rules + LLM judge</text>
-  <text x="820" y="178" class="label">’ QualityReport (reports/)</text>
+  <text x="820" y="178" class="label">-> QualityReport (reports/)</text>
 
   <line class="arrow" x1="210" y1="150" x2="240" y2="150" marker-end="url(#arrow)"/>
   <line class="arrow" x1="400" y1="150" x2="430" y2="150" marker-end="url(#arrow)"/>
@@ -64,13 +64,13 @@
 
   <rect class="box query" x="260" y="340" width="180" height="80"/>
   <text x="270" y="368" class="title">7. Router</text>
-  <text x="270" y="390" class="label">NL ’ Cypher (LLM)</text>
-  <text x="270" y="408" class="label">’ Cypher safety guard</text>
+  <text x="270" y="390" class="label">NL -> Cypher (LLM)</text>
+  <text x="270" y="408" class="label">-> Cypher safety guard</text>
 
   <rect class="box query" x="470" y="340" width="180" height="80"/>
   <text x="480" y="368" class="title">8. Retriever</text>
   <text x="480" y="390" class="label">read-only Cypher</text>
-  <text x="480" y="408" class="label">’ Neo4j rows</text>
+  <text x="480" y="408" class="label">-> Neo4j rows</text>
 
   <rect class="box query" x="680" y="340" width="180" height="80"/>
   <text x="690" y="368" class="title">9. Generator</text>
@@ -92,5 +92,5 @@
   <text x="500" y="290" class="label">graph rows are queried</text>
 
   <!-- Footer -->
-  <text x="40" y="535" class="label">Reading order: numbered boxes 1’10. Ingest left-to-right, then Query left-to-right. Solid arrows = data flow; dashed = read-only access.</text>
+  <text x="40" y="535" class="label">Reading order: numbered boxes 1-10. Ingest left-to-right, then Query left-to-right. Solid arrows = data flow; dashed = read-only access.</text>
 </svg>

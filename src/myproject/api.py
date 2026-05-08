@@ -4,13 +4,15 @@ This module is the public API the rubric grades against:
 
 * ``GET /health`` — Docker health check
 * ``GET /`` — minimal browser UI used by the manual walkthrough
-* ``POST /api/query`` — main endpoint (US-01 happy path, US-02 empty input,
-  US-03 missing API key)
-* ``POST /api/pipeline/sample`` — tiny ingest sample (US-04)
-* ``GET /api/stats`` — graph node / edge counts (US-05)
+* ``POST /api/pipeline/sample`` — tiny ingest sample (US-01)
+* ``POST /api/pipeline/full`` — configured full ingest
+* ``GET /api/stats`` — graph node / edge counts (US-02)
+* ``GET /api/graph/overview`` — richer graph tables for the Next.js UI
+* ``POST /api/query`` — main endpoint (US-03 happy path, US-04 empty input,
+  US-05 missing API key)
 
 Every request gets a fresh ``request_id`` middleware-side and that id is
-attached to every log line emitted while the request is in flight, so the TA
+attached to every log line emitted while the request is in flight, so the reviewer
 can trace a request end-to-end through ``docker compose logs -f app`` (see
 ``docs/LOGGING.md``).
 """
@@ -21,7 +23,7 @@ import logging
 import os
 from typing import Any
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -62,6 +64,42 @@ class QueryOut(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class NamedCount(BaseModel):
+    name: str
+    count: int
+
+
+class GraphEntityOut(BaseModel):
+    node_id: str
+    display_name: str
+    entity_kind: str
+    alias_count: int
+    mention_count: int
+    source_run_id: str | None = None
+
+
+class GraphRelationshipOut(BaseModel):
+    rel_type: str
+    source_id: str
+    source_display: str
+    source_labels: list[str] = Field(default_factory=list)
+    target_id: str
+    target_display: str
+    target_labels: list[str] = Field(default_factory=list)
+    artifact_id: str | None = None
+    confidence: float | None = None
+
+
+class GraphOverviewOut(BaseModel):
+    version: str
+    nodes: int
+    edges: int
+    node_labels: list[NamedCount] = Field(default_factory=list)
+    relationship_types: list[NamedCount] = Field(default_factory=list)
+    entities: list[GraphEntityOut] = Field(default_factory=list)
+    relationships: list[GraphRelationshipOut] = Field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # App factory
 # ---------------------------------------------------------------------------
@@ -77,14 +115,17 @@ async def _request_id_middleware(request: Request, call_next):
     """Allocate a request id and attach it to context + ``X-Request-ID`` header."""
     rid = request.headers.get("x-request-id") or new_request_id()
     token = set_request_id(rid)
-    log_event(LOG, "request_started", method=request.method, path=request.url.path)
+    suppress_routine_logs = request.url.path == "/health"
+    if not suppress_routine_logs:
+        log_event(LOG, "request_started", method=request.method, path=request.url.path)
     try:
         response: Response = await call_next(request)
     except Exception as exc:  # pragma: no cover - last-resort guard
         log_event(LOG, "request_unhandled_error", level=logging.ERROR, error=str(exc))
         response = JSONResponse({"error": "internal server error"}, status_code=500)
     response.headers["X-Request-ID"] = rid
-    log_event(LOG, "request_finished", status=response.status_code)
+    if not suppress_routine_logs:
+        log_event(LOG, "request_finished", status=response.status_code)
     reset_request_id(token)
     return response
 
@@ -96,7 +137,7 @@ def health() -> str:
 
 @app.get("/api/stats")
 def stats() -> dict[str, Any]:
-    """US-05: cheap node/edge counts from the live graph."""
+    """US-02: Statistics for the Graph Explorer."""
     from myproject.retriever import Retriever
 
     retriever = Retriever()
@@ -106,8 +147,29 @@ def stats() -> dict[str, Any]:
         retriever.close()
 
 
+@app.get("/api/graph/overview", response_model=GraphOverviewOut)
+def graph_overview(
+    relationship_type: str | None = Query(default=None),
+    entity_limit: int = Query(default=50, ge=1, le=250),
+    relationship_limit: int = Query(default=200, ge=1, le=1000),
+) -> GraphOverviewOut:
+    """Return graph summary tables for the Graph Explorer console."""
+    from myproject.retriever import Retriever
+
+    retriever = Retriever()
+    try:
+        overview = retriever.graph_overview(
+            relationship_type=relationship_type,
+            entity_limit=entity_limit,
+            relationship_limit=relationship_limit,
+        )
+        return GraphOverviewOut(version=__version__, **overview)
+    finally:
+        retriever.close()
+
+
 # ---------------------------------------------------------------------------
-# Main query endpoint — wired to docs/STORIES.md US-01..US-03
+# Main query endpoint — wired to docs/STORIES.md US-03..US-05
 # ---------------------------------------------------------------------------
 @app.post("/api/query")
 def query(payload: QueryIn) -> JSONResponse:
@@ -134,13 +196,26 @@ def query(payload: QueryIn) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
-# US-04: run a tiny ingest sample so the UI can demo the pipeline.
+# US-01: run a tiny ingest sample so the UI can demo the pipeline.
 # ---------------------------------------------------------------------------
 class PipelineSampleOut(BaseModel):
     run_id: str
     raw_artifacts: int
     extraction_records: int
     dedup_clusters: int
+
+
+class PipelineFullOut(BaseModel):
+    run_id: str
+    last_step: str | None = None
+    succeeded: bool
+    collection_mode: str
+    source_path: str
+    collection: dict[str, Any] = Field(default_factory=dict)
+    extraction: dict[str, Any] = Field(default_factory=dict)
+    dedup: dict[str, Any] = Field(default_factory=dict)
+    graph_insert: dict[str, Any] = Field(default_factory=dict)
+    quality: dict[str, Any] = Field(default_factory=dict)
 
 
 @app.post("/api/pipeline/sample", response_model=PipelineSampleOut)
@@ -151,8 +226,52 @@ def pipeline_sample() -> PipelineSampleOut:
     return PipelineSampleOut(**summary)
 
 
+@app.post("/api/pipeline/full", response_model=PipelineFullOut)
+def pipeline_full() -> PipelineFullOut:
+    """Run the configured full ingest pipeline using current `.env` settings."""
+    from agents.pipeline import (
+        PipelineInput,
+        PipelineRuntime,
+        pipeline_succeeded,
+        run_linear_pipeline,
+    )
+    from config import get_settings
+
+    settings = get_settings()
+    runtime = PipelineRuntime.from_settings(settings)
+    final = run_linear_pipeline(
+        runtime,
+        PipelineInput(
+            run_id=None,
+            collector_version="api-full-ingest-0.1.0",
+            max_items=settings.apify_max_items_per_run,
+            seed_handles=[],
+        ),
+    )
+
+    if settings.collection_mode == "fixture":
+        source_path = str(settings.collection_fixture_path)
+    elif settings.collection_mode == "apify_data":
+        source_path = str(settings.apify_data_path)
+    else:
+        source_path = "live Apify collection"
+
+    return PipelineFullOut(
+        run_id=str(final.get("run_id") or ""),
+        last_step=final.get("last_step"),
+        succeeded=bool(pipeline_succeeded(final)),
+        collection_mode=settings.collection_mode,
+        source_path=source_path,
+        collection=final.get("collection") or {},
+        extraction=final.get("extraction") or {},
+        dedup=final.get("dedup") or {},
+        graph_insert=final.get("graph_insert") or {},
+        quality=final.get("quality") or {},
+    )
+
+
 # ---------------------------------------------------------------------------
-# Browser UI — single self-contained page so the TA only needs ``docker
+# Browser UI — single self-contained page so the reviewer only needs ``docker
 # compose up`` to walk every story.
 # ---------------------------------------------------------------------------
 INDEX_HTML = """<!doctype html>
@@ -162,9 +281,10 @@ INDEX_HTML = """<!doctype html>
   <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\" />
   <title>Instagram OSINT KG Agent</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; }
-    h1 { margin-bottom: 0.25rem; }
-    .sub { color: #555; margin-top: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; background: #fcfcfc; color: #1a1a1a; }
+    h1 { margin-bottom: 0.25rem; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
+    h1 span { color: #2563eb; }
+    .sub { color: #666; margin-top: 0; font-size: 1.1rem; }
     form { display: flex; gap: 0.5rem; margin: 1rem 0; }
     input[type=text] { flex: 1; padding: 0.5rem; font-size: 1rem; }
     button { padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; }
@@ -176,7 +296,7 @@ INDEX_HTML = """<!doctype html>
   </style>
 </head>
 <body>
-  <h1>Instagram OSINT Knowledge Graph Agent</h1>
+  <h1>Instagram OSINT <span>Knowledge Chat</span></h1>
   <p class=\"sub\">Ask a natural-language question; we answer from the graph with citations.</p>
 
   <form id=\"qform\">
@@ -198,9 +318,9 @@ INDEX_HTML = """<!doctype html>
   </section>
 
   <section class=\"card\">
-    <h3>Pipeline / graph utilities</h3>
-    <button id=\"sample-btn\">Run sample pipeline (US-04)</button>
-    <button id=\"stats-btn\">Refresh graph stats (US-05)</button>
+    <h3>Utilities</h3>
+    <button id=\"sample-btn\">Run Ingest (Pipeline Console)</button>
+    <button id=\"stats-btn\">Refresh Stats (Graph Explorer)</button>
     <pre id=\"util-out\"></pre>
   </section>
 
@@ -265,7 +385,13 @@ def _main() -> int:
     import uvicorn
 
     port = int(os.getenv("APP_PORT", "8080"))
-    uvicorn.run("myproject.api:app", host="0.0.0.0", port=port, log_config=None)
+    uvicorn.run(
+        "myproject.api:app",
+        host="0.0.0.0",
+        port=port,
+        log_config=None,
+        access_log=False,
+    )
     return 0
 
 

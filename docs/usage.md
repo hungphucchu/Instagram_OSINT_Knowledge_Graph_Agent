@@ -1,18 +1,62 @@
 # Usage Guide
 
 > Every story listed in `docs/STORIES.md` has a corresponding section here.
-> The TA verifies this mapping during the Documentation walkthrough.
+> Each section below matches the current Next.js walkthrough flow.
 >
 > Demo capture: [docs/assets/demo.gif](assets/demo.gif)
 
-## Submitting a question (US-01)
+## Running the sample ingest (US-01)
+
+From the UI:
+
+1. Visit <http://localhost:3000/agents>.
+2. Confirm the page title reads **Pipeline Console**.
+3. Click **Run Sample Ingest**.
+4. The **Latest Sample Ingest** card appears as a table showing the **Run ID**, 
+   **Raw Artifacts**, **Extraction Records**, and **Dedup Clusters**.
+5. Optionally click **Run Full Ingest** to run the configured end-to-end ingest pipeline.
+   The UI then shows a **Latest Full Ingest** card with per-phase statuses.
+
+From the terminal:
+
+```bash
+make download-data            # Ensure fixtures are available
+PYTHONPATH=src python -m myproject.pipeline --sample
+```
+
+## Inspecting graph stats (US-02)
+
+From the UI, visit <http://localhost:3000/graph> and click
+**Refresh Graph Overview**. The page then shows:
+
+1. metric cards for Nodes/Edges/Backend,
+2. a **Node Labels** count table,
+3. a **Relationships** count table with relationship-type dropdown filter,
+4. an **Entities** table, and
+5. a **Graph Relationship Data** table.
+
+Core count data is also available via:
+
+```bash
+curl -s http://localhost:8080/api/stats | jq
+```
+
+The output is `{"version": "...", "nodes": int, "edges": int}`.
+
+Richer graph explorer data comes from:
+
+```bash
+curl -s "http://localhost:8080/api/graph/overview" | jq
+```
+
+## Submitting a question (US-03)
 
 To ask a question:
 
-1. Visit <http://localhost:8080>.
-2. Type your question in the input box.
-3. Click **Submit**.
-4. The Answer, Latency, Citations, and the Generated Cypher appear below the
+1. Visit <http://localhost:3000/chat>.
+2. Type your question in the **Question** field.
+3. Click **Ask Graph**.
+4. The Answer, query id, latency, Citations, and Cypher cards appear below the
    form.
 
 Tips:
@@ -30,17 +74,15 @@ Tips:
     -d '{"text":"Who appeared together most often?","max_results":5}' | jq
   ```
 
-## Empty input handling (US-02)
+## Empty input handling (US-04)
 
-If you click **Submit** without typing anything, the UI displays
-"Please enter a question" inline and does not call the API. If a script
-bypasses the client-side guard and POSTs `{"text": ""}` directly,
-`POST /api/query` returns HTTP 400 with body
+If you click **Ask Graph** with an empty question, the Next.js page displays
+the backend error inline. The request to `POST /api/query` returns HTTP 400 with body
 `{"error": "input text is required"}`. No LLM tokens are spent.
 
-## Configuration troubleshooting (US-03)
+## Configuration troubleshooting (US-05)
 
-If the system shows "The model service is not configured. Contact the
+If the `/chat` page shows "The model service is not configured. Contact the
 operator.", the LLM credential is missing:
 
 ```bash
@@ -54,34 +96,6 @@ docker compose up
 
 While the credential is missing, every `/api/query` returns HTTP 503.
 `/health` and `/api/stats` remain available because they do not call the LLM.
-
-## Running the sample ingest (US-04)
-
-From the UI:
-
-1. Visit <http://localhost:8080>.
-2. Scroll to the "Pipeline / graph utilities" panel.
-3. Click **Run sample pipeline (US-04)**.
-4. The panel below the buttons shows a JSON summary of how many raw
-   artifacts, extraction records, and dedup clusters the run produced.
-
-From the terminal:
-
-```bash
-make download-data            # stage fixtures into data/
-PYTHONPATH=src python -m myproject.pipeline --sample
-```
-
-## Inspecting graph stats (US-05)
-
-From the UI, click **Refresh graph stats (US-05)**. The same data is
-available via:
-
-```bash
-curl -s http://localhost:8080/api/stats | jq
-```
-
-The output is `{"version": "...", "nodes": int, "edges": int}`.
 
 ## Bringing the system up and down
 
@@ -106,5 +120,5 @@ make lint                 # ruff + black --check + mypy
 make test                 # unit + integration + user_stories + edge
 make loadtest             # 60s sustained load against the running app
 make demo                 # exercises every story end-to-end via curl
-make preflight            # everything the TA runs in Phase 1 of grading
+make preflight            # everything the reviewer runs in Phase 1 of grading
 ```

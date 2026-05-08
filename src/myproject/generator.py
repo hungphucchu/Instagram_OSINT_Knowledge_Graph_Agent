@@ -40,7 +40,7 @@ def generate_answer(
     """Return ``{answer, citations, latency_ms}``.
 
     ``require_llm=True`` raises :class:`ModelNotConfiguredError` when no
-    credential is available — this is what powers the US-03 error story.
+    credential is available — this is what powers the US-05 error story.
     """
     from agents.extraction.llm_client import LLMClient  # noqa: WPS433
     from config import get_settings  # noqa: WPS433

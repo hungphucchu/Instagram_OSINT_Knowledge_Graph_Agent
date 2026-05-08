@@ -43,6 +43,7 @@ reports/coverage_html/
 reports/coverage.xml
 reports/loadtest*
 reports/*.csv
+reports/*.log
 reports/regenerated*.xml
 
 # Local report scratch / historical outputs that are usually not worth

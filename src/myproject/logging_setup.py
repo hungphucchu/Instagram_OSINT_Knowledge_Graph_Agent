@@ -80,8 +80,17 @@ def configure_logging(level: str | None = None) -> None:
     handler.setFormatter(_JsonFormatter())
     handler.addFilter(_RequestIdFilter())
     root = logging.getLogger()
-    root.handlers = [handler]
+    for h in root.handlers[:]:
+        root.removeHandler(h)
+    root.addHandler(handler)
     root.setLevel(log_level)
+    # Force uvicorn to reuse the same JSON handler instead of emitting its
+    # default plain-text startup/access lines.
+    for uvicorn_logger in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        logger = logging.getLogger(uvicorn_logger)
+        logger.handlers = []
+        logger.propagate = True
+        logger.setLevel(log_level)
     # Quiet some chatty libraries that ship with INFO-level connection chatter.
     for noisy in ("neo4j", "neo4j.io", "httpx", "openai", "urllib3"):
         logging.getLogger(noisy).setLevel(max(logging.WARNING, root.level))

@@ -1,36 +1,59 @@
-"""Acceptance test for US-03 [ERROR PATH]: Missing LLM API key returns 503."""
+"""Acceptance test for US-03: User submits a query and receives a cited answer."""
 
 from __future__ import annotations
 
+import myproject.router as router_mod
 import pytest
 from fastapi.testclient import TestClient
 
 
+class _FakeResponse:
+    def __init__(self) -> None:
+        self.answer = "Most frequent co-occurrence: Alice ↔ Bob (4)."
+        self.evidence = [
+            {"doc_id": "post-1", "from": "Alice", "to": "Bob", "freq": 4},
+            {"doc_id": "post-2", "from": "Alice", "to": "Carol", "freq": 2},
+        ]
+        self.cypher = "MATCH (a)-[r]->(b) RETURN a, b, count(r) AS f LIMIT 50"
+        self.query_id = "q-us03"
+        self.warnings: list[str] = []
+
+
+class _FakeAgent:
+    def answer(self, _req):  # noqa: ANN001
+        return _FakeResponse()
+
+
+class _FakeSettings:
+    query_llm_enabled = True
+    query_llm_api_key = "fake"
+
+
 @pytest.mark.user_story("US-03")
-def test_us_03_missing_api_key_returns_503(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_us_03_query_returns_cited_answer(monkeypatch: pytest.MonkeyPatch) -> None:
     """
-    Given the application is running with `QUERY_LLM_API_KEY` empty,
-    When the user submits any non-empty question,
-    Then the response shows "The model service is not configured. Contact the
-    operator." and the HTTP status is 503 (not 500), and no Python stack
-    trace appears in the response body.
+    Given the application is running and the Neo4j graph is reachable,
+    When the user submits the query "Who appeared together most often?",
+    Then the response contains a non-empty `answer` string, at least one
+    citation with a `doc_id` and `snippet`, the `latency_ms` is reported,
+    and the executed Cypher is returned in `cypher`.
     """
-    # The autouse conftest already disables the LLM credential, but we re-set
-    # explicitly to make the intent of this story crystal clear.
-    monkeypatch.setenv("QUERY_LLM_ENABLED", "true")  # enabled but no key
-    monkeypatch.setenv("QUERY_LLM_API_KEY", "")
-    from config import get_settings
-
-    get_settings.cache_clear()
-
+    monkeypatch.setattr(router_mod, "_agent", lambda: (_FakeAgent(), _FakeSettings()))
     from myproject.api import app
 
     with TestClient(app) as client:
-        response = client.post("/api/query", json={"text": "hello"})
+        response = client.post(
+            "/api/query",
+            json={"text": "Who appeared together most often?", "max_results": 5},
+        )
 
-    assert response.status_code == 503
+    assert response.status_code == 200
     body = response.json()
-    assert "not configured" in body.get("error", "").lower()
-    assert "operator" in body.get("error", "").lower()
-    # No Python traceback leaked
-    assert "Traceback" not in response.text
+    assert body["answer"].strip() != ""
+    assert isinstance(body["citations"], list)
+    assert len(body["citations"]) >= 1
+    for citation in body["citations"]:
+        assert "doc_id" in citation
+        assert "snippet" in citation
+    assert isinstance(body["latency_ms"], int)
+    assert body["cypher"] and body["cypher"].lstrip().upper().startswith("MATCH")

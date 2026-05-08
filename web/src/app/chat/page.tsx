@@ -19,7 +19,7 @@ export default function ChatPage() {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, showCypher: true })
+        body: JSON.stringify({ text: question, max_results: 5 })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -52,15 +52,16 @@ export default function ChatPage() {
           <div className="card">
             <h3>Answer</h3>
             <p>{result.answer}</p>
-            <p className="muted">query_id: {result.queryId}</p>
+            <p className="muted">query_id: {result.query_id || "-"}</p>
+            <p className="muted">latency: {result.latency_ms} ms</p>
           </div>
           <div className="card">
             <h3>Cypher</h3>
             <pre>{result.cypher || "-"}</pre>
           </div>
           <div className="card">
-            <h3>Evidence ({result.evidenceRows})</h3>
-            <pre>{JSON.stringify(result.evidence, null, 2)}</pre>
+            <h3>Citations ({result.citations.length})</h3>
+            <pre>{JSON.stringify(result.citations, null, 2)}</pre>
           </div>
         </div>
       ) : null}

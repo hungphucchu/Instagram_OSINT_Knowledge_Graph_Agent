@@ -1,6 +1,6 @@
 # System Specification — Instagram OSINT Knowledge Graph Agent
 
-> This document is the source of truth for the project. The TA feeds this file
+> This document is the source of truth for the project. The reviewer feeds this file
 > to an LLM during grading (`scripts/regenerate.sh`) and verifies that the
 > regenerated source under `regenerated/src/myproject/` makes the user-story
 > tests in `tests/user_stories/` pass. Anything outside this spec is
@@ -21,7 +21,7 @@ and `logging_context.py`.
 **Users**
 
 - OSINT analysts exploring public Instagram activity
-- Instructors and TAs grading the pipeline with fixtures and a live app
+- Course reviewers grading the pipeline with fixtures and a live app
 - Developers replaying the pipeline on deterministic sample data
 
 **In scope**
@@ -54,9 +54,9 @@ from this specification alone.
 
 | Component | Source module | Responsibility |
 | --- | --- | --- |
-| API | `src/myproject/api.py` | FastAPI app, request-id middleware, health/stats/query/sample endpoints, browser UI |
+| API | `src/myproject/api.py` | FastAPI app, request-id middleware, health/stats/query/sample/full/overview endpoints, browser UI |
 | Router | `src/myproject/router.py` | Natural-language question → query agent → evidence-grounded response envelope |
-| Retriever | `src/myproject/retriever.py` | Read-only Neo4j facade; graph stats and bounded query execution |
+| Retriever | `src/myproject/retriever.py` | Read-only Neo4j facade; graph stats, rich overview tables, and bounded query execution |
 | Generator | `src/myproject/generator.py` | Evidence-grounded answer synthesis with deterministic fallback |
 | Pipeline | `src/myproject/pipeline.py` | Deterministic sample ingest over the bundled fixture and `apify_data/` inputs |
 | Logging | `src/myproject/logging_setup.py` | Structured JSON logging and request-id context propagation |
@@ -341,7 +341,7 @@ Answer natural-language questions by treating the graph as the retriever.
 
 ### 3.9 User-story flows
 
-**US-01 happy path**
+**US-03 happy path**
 
 1. Browser or client POSTs `{"text": "...", "max_results": N}` to
    `POST /api/query`.
@@ -351,18 +351,18 @@ Answer natural-language questions by treating the graph as the retriever.
    and returns evidence rows.
 5. Router converts rows into citations and returns the response envelope.
 
-**US-02 empty input**
+**US-04 empty input**
 
 - `POST /api/query` with blank text returns HTTP 400
 - no LLM call is required
 
-**US-03 model key missing**
+**US-05 model key missing**
 
 - if `QUERY_LLM_ENABLED=true` and `QUERY_LLM_API_KEY` is empty,
   the router raises `ModelNotConfiguredError`
 - the API returns HTTP 503 with an operator-readable message
 
-**US-04 sample pipeline**
+**US-01 sample pipeline**
 
 - `POST /api/pipeline/sample` runs deterministic offline ingest starting from
   the bundled fixture and / or `apify_data/`
@@ -370,10 +370,80 @@ Answer natural-language questions by treating the graph as the retriever.
 - it may attempt graph insertion if Neo4j is reachable
 - graph insertion failure does not invalidate the count summary response
 
-**US-05 graph stats**
+**US-02 graph stats**
 
 - `GET /api/stats` reads node / edge counts from the live graph
 - on graph read failure it returns zero counts rather than crashing
+
+**US-01 full ingest variant**
+
+- `POST /api/pipeline/full` runs the configured end-to-end ingest path using
+  current `.env` settings
+- it returns the run id, last step, success flag, collection mode/source path,
+  and phase-level status blocks (`collection`, `extraction`, `dedup`,
+  `graph_insert`, `quality`)
+
+**US-02 graph explorer variant**
+
+- `GET /api/graph/overview` returns table-ready graph data:
+  node/edge totals, node-label counts, relationship-type counts, top entities,
+  and relationship rows
+- optional `relationship_type` filtering is supported for relationship rows
+
+### 3.10 Persistence and file contract
+
+The rebuilt system must create and use the following persisted artifacts.
+
+**SQLite stores**
+
+- Raw artifacts DB: `data/raw_artifacts.db`
+  - table `raw_artifacts`
+  - key columns include `artifact_id`, `run_id`, `platform_post_id`,
+    `caption_text`, `hashtags`, `mentions`, `raw_payload`
+- Extraction DB: `data/extraction_records.db`
+  - table `extraction_records`
+  - key columns include `artifact_id`, `run_id`, `extractor_model_id`,
+    `entities_json`, `relations_json`
+- Dedup DB: `data/dedup_reports.db`
+  - table `dedup_reports`
+  - key columns include `run_id`, `clusters_json`, `pair_scores_json`,
+    `audit_log_json`
+
+**Graph store**
+
+- Neo4j database from `NEO4J_DATABASE` (default `neo4j`)
+- required node labels: `CanonicalEntity`, `Post`, `Artifact`
+- required relationship types: `MENTIONS`, `TAGGED_IN`, `SOURCED_FROM`
+- required unique constraints:
+  - `CanonicalEntity(node_id)`
+  - `Post(platform_post_id)`
+  - `Artifact(artifact_id)`
+
+**Reports and artifacts**
+
+- `reports/quality_<run_id>_<timestamp>.json` for quality output
+- `reports/*.xml` for test outputs
+- `reports/coverage.xml` and `reports/coverage_html/`
+- `reports/benchmarks.json` for load results
+
+### 3.11 Edge-case behavior contract
+
+The rebuilt system must handle the following without crashing:
+
+- empty input text
+- very long input text
+- non-ASCII text
+- multilingual input
+- code-mixed input
+- adversarial / prompt-injection style input
+
+Expected behavior:
+
+- empty input returns HTTP 400 with `{"error": "input text is required"}`
+- non-empty edge cases return structured responses (or controlled warnings),
+  not stack traces
+- any LLM/configuration failure on `/api/query` returns structured HTTP 503/500
+  responses, not unhandled exceptions
 
 ## 4. Public Interfaces
 
@@ -398,6 +468,45 @@ GET /
 GET /api/stats
   -> 200 OK
   -> body: {"version": "...", "nodes": int, "edges": int}
+
+GET /api/graph/overview
+Query params:
+  relationship_type: string | null
+  entity_limit: int (default 50, 1..250)
+  relationship_limit: int (default 200, 1..1000)
+
+  -> 200 OK
+  -> body:
+     {
+       "version": str,
+       "nodes": int,
+       "edges": int,
+       "node_labels": [{"name": str, "count": int}],
+       "relationship_types": [{"name": str, "count": int}],
+       "entities": [
+         {
+           "node_id": str,
+           "display_name": str,
+           "entity_kind": str,
+           "alias_count": int,
+           "mention_count": int,
+           "source_run_id": str | null
+         }
+       ],
+       "relationships": [
+         {
+           "rel_type": str,
+           "source_id": str,
+           "source_display": str,
+           "source_labels": [str],
+           "target_id": str,
+           "target_display": str,
+           "target_labels": [str],
+           "artifact_id": str | null,
+           "confidence": float | null
+         }
+       ]
+     }
 
 POST /api/query
 Content-Type: application/json
@@ -432,6 +541,22 @@ POST /api/pipeline/sample
        "extraction_records": int,
        "dedup_clusters": int
      }
+
+POST /api/pipeline/full
+  -> 200 OK
+  -> body:
+     {
+       "run_id": str,
+       "last_step": str | null,
+       "succeeded": bool,
+       "collection_mode": str,
+       "source_path": str,
+       "collection": object,
+       "extraction": object,
+       "dedup": object,
+       "graph_insert": object,
+       "quality": object
+     }
 ```
 
 Every response carries `X-Request-ID: req_xxxxxxxx` matching the same request
@@ -453,6 +578,13 @@ class Retriever:
     def __init__(self, index_path: str = "bolt://localhost:7687") -> None: ...
     def search(self, query: str, k: int = 5) -> list[dict]: ...
     def graph_stats(self) -> dict[str, int]: ...
+    def graph_overview(
+        self,
+        *,
+        relationship_type: str | None = None,
+        entity_limit: int = 50,
+        relationship_limit: int = 200,
+    ) -> dict[str, Any]: ...
     def close(self) -> None: ...
 
 # src/myproject/generator.py
@@ -488,13 +620,15 @@ def get_request_id() -> str: ...
 | Dependency | Pinned Version | Purpose |
 | --- | --- | --- |
 | Python | 3.11.9 | Runtime |
-| fastapi | 0.110.3 | HTTP framework |
+| fastapi | 0.124.3 | HTTP framework |
+| starlette | 0.49.1 | ASGI toolkit used by FastAPI |
 | uvicorn[standard] | 0.30.0 | ASGI server |
 | pydantic | 2.7.4 | Request / response validation |
 | pydantic-settings | 2.3.4 | Environment-driven settings |
 | neo4j | 5.22.0 | Read-only query execution and graph insertion |
 | openai | 1.40.0 | OpenAI-compatible client for extraction / query |
-| langgraph | 0.2.74 | Ingest + quality state graph |
+| httpx | 0.27.2 | HTTP transport compatibility for OpenAI client |
+| langgraph | 1.0.10 | Ingest + quality state graph |
 
 Test / lint / load tooling is pinned separately and is not part of the
 regenerated code target.
@@ -523,7 +657,7 @@ variable the public facade and internal pipeline read.
 | `QUERY_MAX_EVIDENCE_ROWS` | no | `20` | Evidence row cap |
 
 \* `QUERY_LLM_API_KEY` may be empty only when `QUERY_LLM_ENABLED=false`, or
-when intentionally exercising the US-03 error path.
+when intentionally exercising the US-05 error path.
 
 ### 6.2 Phase-aligned configuration groups
 
@@ -632,3 +766,32 @@ The target questions are graph-shaped, not chunk-retrieval shaped. Examples:
 
 So the graph is the retriever, and the LLM is only a translator / summarizer
 around graph execution.
+
+## 8. Acceptance and Edge-case Matrix
+
+Regenerated code is considered correct only if it satisfies all story contracts
+and edge-case behaviors below.
+
+### 8.1 Story contracts
+
+- `US-01` (`tests/user_stories/test_us_01.py`)
+  - sample ingest request succeeds and returns run/count fields
+- `US-02` (`tests/user_stories/test_us_02.py`)
+  - graph stats endpoint returns version/nodes/edges
+- `US-03` (`tests/user_stories/test_us_03.py`)
+  - question endpoint returns answer/citations/latency (+ optional cypher/query id)
+- `US-04` (`tests/user_stories/test_us_04.py`)
+  - empty question returns HTTP 400 and exact error message
+- `US-05` (`tests/user_stories/test_us_05.py`)
+  - missing configured model key returns HTTP 503 and operator-readable error
+
+### 8.2 Edge-case contracts
+
+Edge-case coverage is anchored in `tests/edge/test_empty_input.py` and requires:
+
+- no process crash for empty, long, non-ASCII, multilingual, code-mixed, and
+  adversarial inputs
+- structured response envelopes on failures (no Python traceback leakage to API
+  clients)
+- deterministic guardrails for unsafe Cypher generation (read-only enforcement,
+  bounded limits, controlled warning paths)

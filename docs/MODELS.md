@@ -1,9 +1,5 @@
 # Models
 
-> Every model used by the project is listed here with source, identifier,
-> license, and how to access it. Model checkpoints are **not** committed
-> to the repo. All current models are API-hosted; nothing to download.
-
 ## Model 1: Qwen3-8B (default Cypher translator + answer synthesizer)
 
 - **Source:** UTSA-hosted OpenAI-compatible inference endpoint

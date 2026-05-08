@@ -15,7 +15,9 @@ def test_api_module_imports_and_exposes_routes() -> None:
     assert "/health" in paths
     assert "/api/query" in paths
     assert "/api/stats" in paths
+    assert "/api/graph/overview" in paths
     assert "/api/pipeline/sample" in paths
+    assert "/api/pipeline/full" in paths
     assert "/" in paths
 
 

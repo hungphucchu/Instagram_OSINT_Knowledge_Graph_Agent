@@ -48,13 +48,23 @@ class QueryAgent:
             rows = self._graph_store.run_read(cypher, None)
         except Exception as exc:
             self._log.warning("query_execution_failed query_id=%s error=%s", query_id, str(exc))
-            return QueryResponse(
-                answer="I could not execute the generated graph query safely.",
-                evidence=[],
-                cypher=cypher if req.include_cypher else None,
+            fallback = self._retry_with_deterministic_cypher(
+                question=req.question,
+                original_cypher=cypher,
                 query_id=query_id,
-                warnings=[f"query_execution_failed:{type(exc).__name__}"],
+                original_error=exc,
+                warnings=warnings,
             )
+            if fallback is not None:
+                cypher, rows = fallback
+            else:
+                return QueryResponse(
+                    answer="I could not execute the generated graph query safely.",
+                    evidence=[],
+                    cypher=cypher if req.include_cypher else None,
+                    query_id=query_id,
+                    warnings=[f"query_execution_failed:{type(exc).__name__}"],
+                )
         evidence = [self._to_json_safe(x) for x in rows[: self._settings.query_max_evidence_rows]]
         answer = self._synthesize_answer(req.question, evidence, warnings)
         return QueryResponse(
@@ -69,12 +79,60 @@ class QueryAgent:
     def _repair_generated_cypher(cypher: str) -> str:
         """Normalize common model output quirks into Neo4j-compatible syntax."""
         q = cypher.strip()
+        # Neo4j rejects COUNT((pattern)); convert it to COUNT { pattern }.
+        q = re.sub(
+            r"\bCOUNT\(\(\s*(.*?)\s*\)\)",
+            lambda m: f"COUNT {{ ({m.group(1).strip()}) }}",
+            q,
+            flags=re.IGNORECASE,
+        )
         # Neo4j expects COUNT { pattern }, not COUNT({pattern})
         q = re.sub(r"\bCOUNT\(\s*\{", "COUNT {", q, flags=re.IGNORECASE)
         q = re.sub(r"\}\s*\)", " }", q)
         q = re.sub(r"\bCOUNT\s*\{\s*\(", "COUNT { (", q, flags=re.IGNORECASE)
         q = re.sub(r"\)\s*\}", ") }", q)
         return q
+
+    def _retry_with_deterministic_cypher(
+        self,
+        *,
+        question: str,
+        original_cypher: str,
+        query_id: str,
+        original_error: Exception,
+        warnings: list[str],
+    ) -> tuple[str, list[dict[str, Any]]] | None:
+        fallback_draft = self._repair_generated_cypher(self._generate_cypher_deterministic(question))
+        if fallback_draft.strip() == (original_cypher or "").strip():
+            return None
+        ok, fallback_cypher, err = verify_read_only_cypher(
+            fallback_draft,
+            max_limit=self._settings.query_max_limit,
+        )
+        if not ok:
+            warnings.append(f"query_execution_failed:{type(original_error).__name__}")
+            warnings.append(f"deterministic_fallback_rejected:{err or 'query rejected'}")
+            return None
+        try:
+            rows = self._graph_store.run_read(fallback_cypher, None)
+        except Exception as fallback_exc:
+            warnings.append(f"query_execution_failed:{type(original_error).__name__}")
+            warnings.append(f"deterministic_fallback_failed:{type(fallback_exc).__name__}")
+            self._log.warning(
+                "query_execution_fallback_failed query_id=%s original_error=%s fallback_error=%s",
+                query_id,
+                str(original_error),
+                str(fallback_exc),
+            )
+            return None
+        warnings.append(f"query_execution_failed:{type(original_error).__name__}")
+        warnings.append("deterministic_fallback_used")
+        self._log.info(
+            "query_execution_fallback_succeeded query_id=%s fallback_cypher=%s",
+            query_id,
+            fallback_cypher,
+        )
+        return fallback_cypher, rows
 
     def _generate_cypher(self, question: str) -> str:
         # Offline / load-test mode uses a tiny deterministic translator so the
@@ -424,4 +482,3 @@ class QueryAgent:
         except Exception:
             pass
         return str(value)
-

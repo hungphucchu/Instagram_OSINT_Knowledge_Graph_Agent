@@ -1,14 +1,9 @@
 # Grading Walkthrough Log
 
-> This file is filled in by the TA during Phase 2 and Phase 3 of grading.
-> The grading script reads structured snippets from this log to compute scores
-> for App Functionality, Logging, and Documentation. Keep the section headers
-> and the per-story result lines in their declared format.
-
 Team: __________
 Repo URL: __________
 Commit SHA graded: __________
-TA: __________
+reviewer: __________
 Graded at: __________ (UTC)
 
 ---
@@ -23,11 +18,11 @@ Graded at: __________ (UTC)
 
 Wall clock from `docker compose up` to all services healthy: ___ minutes.
 
-Notes (one line per undocumented manual step the TA had to discover):
+Notes (one line per undocumented manual step the reviewer had to discover):
 
 - ...
 
-> The TA writes a two-line file to `reports/build_status.txt`:
+> The reviewer writes a two-line file to `reports/build_status.txt`:
 > ```
 > ok           # or "failed"
 > 0            # integer count of undocumented manual steps
@@ -37,7 +32,7 @@ Notes (one line per undocumented manual step the TA had to discover):
 
 ### Logging trace
 
-The TA picks one user-initiated action (UI click or API call) and traces it
+The reviewer picks one user-initiated action (UI click or API call) and traces it
 end-to-end through `docker compose logs -f app` using its request ID.
 
 Picked action: [e.g. "Submitted query 'hello' via UI at 14:32:01"]
@@ -49,7 +44,7 @@ Result:
 [ ] **partial** — some components logged the request ID, others did not.
 [ ] **missing** — request ID not found in logs, or logs unstructured.
 
-> The TA writes the chosen word to `reports/logging_trace.txt` (single line:
+> The reviewer writes the chosen word to `reports/logging_trace.txt` (single line:
 > "complete" or "partial" or "missing").
 
 ---
@@ -58,23 +53,23 @@ Result:
 
 ### README cold-read (Documentation)
 
-The TA reads ONLY `README.md` (no other docs, no Slack, no email) and follows
+The reviewer reads ONLY `README.md` (no other docs, no Slack, no email) and follows
 the quick start cold from a fresh clone.
 
 Result:
 
 [ ] **3** — quick start worked exactly as written; reached running app.
-[ ] **2** — reached running app, with one undocumented step the TA had to discover.
+[ ] **2** — reached running app, with one undocumented step the reviewer had to discover.
 [ ] **1** — reached running app, with two undocumented steps.
 [ ] **0** — could not reach a running app from the README alone.
 
-Undocumented steps the TA had to discover:
+Undocumented steps the reviewer had to discover:
 
 - ...
 
 ### Usage guide completeness (Documentation)
 
-The TA opens `docs/usage.md` and verifies every feature listed in `STORIES.md`
+The reviewer opens `docs/usage.md` and verifies every feature listed in `STORIES.md`
 has a corresponding usage section.
 
 Result:
@@ -89,14 +84,14 @@ Missing sections:
 
 ### Screenshot match (Documentation)
 
-The TA compares each `us_NN_expected.png` to the live UI during the story walkthrough.
+The reviewer compares each `us_NN_expected.png` to the live UI during the story walkthrough.
 
 Result:
 
 [ ] **1** — screenshots match the live UI in layout and content.
 [ ] **0** — screenshots are missing, stale, or do not match.
 
-> The TA writes `reports/docs_check.txt`, three lines, one integer per line:
+> The reviewer writes `reports/docs_check.txt`, three lines, one integer per line:
 > ```
 > 3        # cold-read score, 0..3
 > 2        # usage guide completeness, 0..2
@@ -107,7 +102,7 @@ Result:
 
 ### Per-story walkthrough
 
-For each story in `docs/STORIES.md`, the TA follows the numbered manual steps
+For each story in `docs/STORIES.md`, the reviewer follows the numbered manual steps
 and records the outcome here. A story passes only if every numbered step
 behaves exactly as written and the end state matches the reference screenshot.
 
@@ -125,15 +120,34 @@ Result: [ ] PASS  [ ] FAIL
 Observation (one line):
 - ...
 
-[continue for every story in STORIES.md]
+#### US-03: [Story title]
 
-> The TA writes `reports/walkthrough_results.txt`, one line per story:
+Result: [ ] PASS  [ ] FAIL
+
+Observation (one line):
+- ...
+
+#### US-04: [Story title]
+
+Result: [ ] PASS  [ ] FAIL
+
+Observation (one line):
+- ...
+
+#### US-05: [Story title]
+
+Result: [ ] PASS  [ ] FAIL
+
+Observation (one line):
+- ...
+
+> The reviewer writes `reports/walkthrough_results.txt`, one line per story:
 > ```
 > US-01: pass
 > US-02: pass
-> US-03: fail
+> US-03: pass
 > US-04: pass
-> ...
+> US-05: fail
 > ```
 > The grading script reads this file and computes
 > (passed / total) × 20 for App Functionality.
@@ -142,7 +156,7 @@ Observation (one line):
 
 ## Team Contributions check
 
-The TA runs `git shortlog -sne --all --no-merges` and compares to `CONTRIBUTIONS.md`.
+The reviewer runs `git shortlog -sne --all --no-merges` and compares to `CONTRIBUTIONS.md`.
 
 Each member's commit share within ±15 percentage points of declared:
 [ ] pass  [ ] fail
@@ -150,7 +164,7 @@ Each member's commit share within ±15 percentage points of declared:
 Each member committed across at least 2 of: src/, tests/, docs/:
 [ ] pass  [ ] fail
 
-> The TA writes `reports/team_check.txt`, two lines:
+> The reviewer writes `reports/team_check.txt`, two lines:
 > ```
 > pass     # or "fail"
 > pass     # or "fail"
@@ -158,7 +172,7 @@ Each member committed across at least 2 of: src/, tests/, docs/:
 
 ---
 
-## TA final notes
+## reviewer final notes
 
 [Free-form observations, exceptional cases, or context the grading script
 cannot capture. Optional but encouraged.]

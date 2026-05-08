@@ -100,7 +100,7 @@ Add placeholders to `.env` (or secret manager):
 - `APIFY_ACTOR_ID=...`
 - `APIFY_MAX_ITEMS_PER_RUN=...`
 - `APIFY_CACHE_DIR=apify_cache`
-- `APIFY_DATA_PATH=apify_data/dataset.json`
+- `APIFY_DATA_PATH=apify_data/input.json`
 - `APIFY_RUN_TIMEOUT_SECONDS=300`
 - `APIFY_POLL_INTERVAL_SECONDS=5`
 

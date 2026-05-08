@@ -1,10 +1,10 @@
 # Makefile for the Instagram OSINT Knowledge Graph Agent (CS 6263 final project).
 #
-# Every target here is referenced by the rubric. The TA runs these targets
+# Every target here is referenced by the rubric. The reviewer runs these targets
 # during grading. Do not rename them.
 #
 # Conventions:
-#   * Targets that the TA runs are .PHONY
+#   * Targets that the reviewer runs are .PHONY
 #   * All long-running targets emit reports under reports/
 
 .PHONY: help install install-dev test test-unit test-integration test-user-stories test-edge \
@@ -38,7 +38,7 @@ help:
 	@echo "  make clean           remove generated artifacts"
 
 # ---------------------------------------------------------------------------
-# Installation helpers — used in CI / Docker, not by the TA directly.
+# Installation helpers — used in CI / Docker, not by the reviewer directly.
 # ---------------------------------------------------------------------------
 install:
 	$(PIP) install -r requirements.txt
@@ -50,31 +50,42 @@ install-dev:
 # Testing — JUnit XML + coverage are required by the rubric.
 # ---------------------------------------------------------------------------
 test: reports
-	PYTHONPATH=src $(PYTEST) tests/unit \
-	  --junitxml=reports/unit.xml
-	PYTHONPATH=src $(PYTEST) tests/integration \
-	  --junitxml=reports/integration.xml
-	PYTHONPATH=src $(PYTEST) tests/user_stories \
-	  --junitxml=reports/user_stories.xml
-	PYTHONPATH=src $(PYTEST) tests/edge \
-	  --junitxml=reports/edge.xml
-	PYTHONPATH=src $(PYTEST) --cov=$(PACKAGE) \
-	          --cov-report=xml:reports/coverage.xml \
-	          --cov-report=html:reports/coverage_html \
-	          --cov-fail-under=70 \
-	          tests/unit tests/integration tests/user_stories
+	@printf '%s\n' "[test] running unit suite"
+	@PYTHONPATH=src $(PYTEST) -q tests/unit \
+	  --junitxml=reports/unit.xml \
+	  > reports/unit.log 2>&1 || { cat reports/unit.log; exit 1; }
+	@printf '%s\n' "[test] running integration suite"
+	@PYTHONPATH=src $(PYTEST) -q tests/integration \
+	  --junitxml=reports/integration.xml \
+	  > reports/integration.log 2>&1 || { cat reports/integration.log; exit 1; }
+	@printf '%s\n' "[test] running user_stories suite"
+	@PYTHONPATH=src $(PYTEST) -q tests/user_stories \
+	  --junitxml=reports/user_stories.xml \
+	  > reports/user_stories.log 2>&1 || { cat reports/user_stories.log; exit 1; }
+	@printf '%s\n' "[test] running edge suite"
+	@PYTHONPATH=src $(PYTEST) -q tests/edge \
+	  --junitxml=reports/edge.xml \
+	  > reports/edge.log 2>&1 || { cat reports/edge.log; exit 1; }
+	@printf '%s\n' "[test] running coverage suite"
+	@PYTHONPATH=src $(PYTEST) -q --cov=$(PACKAGE) \
+	  --cov-report=xml:reports/coverage.xml \
+	  --cov-report=html:reports/coverage_html \
+	  --cov-fail-under=70 \
+	  tests/unit tests/integration tests/user_stories \
+	  > reports/coverage_test.log 2>&1 || { cat reports/coverage_test.log; exit 1; }
+	@PYTHONPATH=src $(PYTHON) scripts/summarize_test_reports.py
 
 test-unit: reports
-	PYTHONPATH=src $(PYTEST) tests/unit --junitxml=reports/unit.xml
+	@PYTHONPATH=src $(PYTEST) tests/unit --junitxml=reports/unit.xml
 
 test-integration: reports
-	PYTHONPATH=src $(PYTEST) tests/integration --junitxml=reports/integration.xml
+	@PYTHONPATH=src $(PYTEST) tests/integration --junitxml=reports/integration.xml
 
 test-user-stories: reports
-	PYTHONPATH=src $(PYTEST) tests/user_stories --junitxml=reports/user_stories.xml
+	@PYTHONPATH=src $(PYTEST) tests/user_stories --junitxml=reports/user_stories.xml
 
 test-edge: reports
-	PYTHONPATH=src $(PYTEST) tests/edge --junitxml=reports/edge.xml
+	@PYTHONPATH=src $(PYTEST) tests/edge --junitxml=reports/edge.xml
 
 # ---------------------------------------------------------------------------
 # Lint / format / static checks
@@ -119,11 +130,25 @@ download-models:
 # ---------------------------------------------------------------------------
 loadtest: reports
 	@echo "[loadtest] requires the app to be running (docker compose up)"
-	locust -f tests/load/locustfile.py \
-	  --headless -u 20 -r 5 -t 60s \
-	  --host=$${APP_URL:-http://localhost:8080} \
-	  --csv=reports/loadtest
-	PYTHONPATH=src $(PYTHON) scripts/summarize_loadtest.py
+	@sh -c 'set -e; \
+	  rm -f reports/loadtest.log; \
+	  locust -f tests/load/locustfile.py \
+	    --headless --only-summary -u 20 -r 5 -t 60s \
+	    --host=$${APP_URL:-http://localhost:8080} \
+	    --csv=reports/loadtest \
+	    > reports/loadtest.log 2>&1 & \
+	  pid=$$!; \
+	  elapsed=0; \
+	  trap "kill $$pid 2>/dev/null || true" INT TERM; \
+	  echo "[loadtest] started (expected duration: about 60 seconds)"; \
+	  while kill -0 $$pid 2>/dev/null; do \
+	    echo "[loadtest] still running... $${elapsed}s elapsed"; \
+	    sleep 5; \
+	    elapsed=$$((elapsed + 5)); \
+	  done; \
+	  wait $$pid || { cat reports/loadtest.log; exit 1; }'
+	@PYTHONPATH=src $(PYTHON) scripts/summarize_loadtest.py --quiet
+	@$(PYTHON) -c "import json, pathlib; s = json.loads(pathlib.Path('reports/benchmarks.json').read_text())['summary']; print('[loadtest] summary:', 'rps={:.2f}'.format(s['requests_per_second']), 'error_rate={:.2%}'.format(s['error_rate']), 'p95_ms={}'.format(s['p95_ms']), 'status={}'.format(s['status']))"
 
 # ---------------------------------------------------------------------------
 # Demo and regeneration

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render stable walkthrough screenshots and demo.gif for docs/assets/."""
+"""Render stable walkthrough screenshots for docs/assets/stories/."""
 
 from __future__ import annotations
 
@@ -19,151 +19,479 @@ BASE_TEMPLATE = """<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Instagram OSINT KG Agent</title>
+  <title>Instagram OSINT Knowledge Graph Agent</title>
   <style>
-    body {{ font-family: system-ui, sans-serif; max-width: 880px; margin: 2rem auto; padding: 0 1rem; }}
-    h1 {{ margin-bottom: 0.25rem; }}
-    .sub {{ color: #555; margin-top: 0; }}
-    form {{ display: flex; gap: 0.5rem; margin: 1rem 0; }}
-    input[type=text] {{ flex: 1; padding: 0.5rem; font-size: 1rem; }}
-    button {{ padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; }}
-    .card {{ border: 1px solid #ddd; border-radius: 6px; padding: 1rem; margin-top: 1rem; }}
-    .err {{ color: #b00020; min-height: 1.5rem; }}
-    pre {{ background: #f7f7f7; padding: 0.5rem; overflow-x: auto; white-space: pre-wrap; }}
-    .row {{ display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }}
-    .pill {{ background: #eef; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.8rem; }}
-    details[open] summary {{ margin-bottom: 0.5rem; }}
-    ul {{ padding-left: 1.25rem; }}
+    :root {{ color-scheme: dark; }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0b1020;
+      color: #f3f4f6;
+    }}
+    .app-shell {{
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+    }}
+    .sidebar {{
+      border-right: 1px solid #1f2937;
+      padding: 24px 16px;
+      background: #0f172a;
+    }}
+    .nav-item {{
+      display: block;
+      color: #cbd5e1;
+      text-decoration: none;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }}
+    .nav-item.active {{
+      background: #1e293b;
+      color: #e2e8f0;
+    }}
+    .content {{ padding: 28px; }}
+    .card {{
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 14px 0;
+    }}
+    .stack {{ display: grid; gap: 12px; }}
+    .muted {{ color: #94a3b8; }}
+    .error {{ color: #fda4af; }}
+    .btn {{
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }}
+    textarea, pre {{
+      width: 100%;
+      background: #0b1224;
+      color: #e5e7eb;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+    }}
+    pre {{
+      overflow: auto;
+      white-space: pre-wrap;
+      margin: 0;
+    }}
+    .actions {{
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }}
+    .metric-card {{
+      text-align: center;
+      padding: 24px;
+    }}
+    .metric-value {{ font-size: 2rem; font-weight: 800; display: block; color: #3b82f6; }}
+    .metric-label {{ font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.05em; }}
+    .grid-three {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }}
   </style>
 </head>
 <body>
-  <h1>Instagram OSINT Knowledge Graph Agent</h1>
-  <p class="sub">Ask a natural-language question; we answer from the graph with citations.</p>
-
-  <form>
-    <input type="text" placeholder="Who appeared together most often?" value="{question}" />
-    <button type="submit">Submit</button>
-  </form>
-  <div class="err" role="alert">{error_html}</div>
-
-  <section class="card" {out_hidden}>
-    <h2>Answer</h2>
-    <p>{answer_html}</p>
-    <div class="row">
-      <span class="pill">{latency_html}</span>
-      <span class="pill">{query_id_html}</span>
-    </div>
-    <h3>Citations</h3>
-    <ul>
-      {citations_html}
-    </ul>
-    <details open><summary>Generated Cypher</summary><pre>{cypher_html}</pre></details>
-  </section>
-
-  <section class="card">
-    <h3>Pipeline / graph utilities</h3>
-    <button>Run sample pipeline (US-04)</button>
-    <button>Refresh graph stats (US-05)</button>
-    <pre>{util_html}</pre>
-  </section>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-header" style="margin-bottom: 2.5rem; padding: 0 0.5rem;">
+        <div style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; color: #64748b; margin-bottom: 0.5rem; text-transform: uppercase;">
+          Instagram OSINT
+        </div>
+        <h1 style="font-size: 1.25rem; font-weight: 800; margin: 0; line-height: 1.2; color: #f8fafc;">
+          KG <span style="color: #3b82f6;">Agent</span>
+        </h1>
+      </div>
+      <nav>
+        <a class="nav-item {chat_active}" href="/chat">Knowledge Chat</a>
+        <a class="nav-item {agents_active}" href="/agents">Pipeline Console</a>
+        <a class="nav-item {graph_active}" href="/graph">Graph Explorer</a>
+      </nav>
+    </aside>
+    <main class="content">
+      {page_html}
+    </main>
+  </div>
 </body>
 </html>
 """
 
+PIPELINE_TEMPLATE = """
+<section>
+  <h2>Pipeline Console</h2>
+  <p class="muted">Orchestrate automated ingestion workflows to collect, extract, and synchronize Instagram OSINT data within the Knowledge Graph.</p>
+  <div class="card stack" style="border-left: 4px solid #3b82f6;">
+    <div class="actions">
+      <button class="btn">Run Sample Ingest</button>
+      <button class="btn" style="background: #1e293b; border: 1px solid #334155;">Run Full Ingest</button>
+    </div>
+    <p class="muted" style="font-size: 0.85rem;">Select a workflow to begin populating the knowledge graph.</p>
+  </div>
+  {sample_card}
+</section>
+"""
+
+GRAPH_TEMPLATE = """
+<section>
+  <h2>Graph Explorer</h2>
+  <p class="muted">Inspect the structural integrity and content of the knowledge graph, including entities, provenance, and semantic relationships.</p>
+  <div class="grid-three">
+    <div class="card metric-card"><span class="metric-label">Nodes</span><strong class="metric-value">14</strong><div class="metric-sub muted" style="font-size:0.7rem">Total Entities</div></div>
+    <div class="card metric-card"><span class="metric-label">Edges</span><strong class="metric-value">18</strong><div class="metric-sub muted" style="font-size:0.7rem">Semantic Relations</div></div>
+    <div class="card metric-card"><span class="metric-label">Backend</span><strong class="metric-value" style="font-size:1.2rem">v0.1.0</strong><div class="metric-sub muted" style="font-size:0.7rem">System Version</div></div>
+  </div>
+  <div class="actions" style="justify-content:flex-end; margin: 12px 0;">
+    <button class="btn" style="background:#0f172a; border: 1px solid #334155;">Refresh Graph Overview</button>
+  </div>
+  {error_html}
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+    <div class="card stack">
+      <h3>Node Labels</h3>
+      <table style="width:100%; border-collapse: collapse; text-align: left;">
+        <thead><tr><th style="padding:8px;border-bottom:1px solid #1f2937;">Label</th><th style="padding:8px;border-bottom:1px solid #1f2937;">Count</th></tr></thead>
+        <tbody>{node_label_rows}</tbody>
+      </table>
+    </div>
+    <div class="card stack">
+      <div class="actions" style="justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;">Relationships</h3>
+        <select style="width: 230px; background:#0b1224; color:#e5e7eb; border:1px solid #334155; border-radius:8px; padding:8px;">
+          {relationship_options}
+        </select>
+      </div>
+      <table style="width:100%; border-collapse: collapse; text-align: left;">
+        <thead><tr><th style="padding:8px;border-bottom:1px solid #1f2937;">Type</th><th style="padding:8px;border-bottom:1px solid #1f2937;">Count</th></tr></thead>
+        <tbody>{relationship_count_rows}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <h3>Entities</h3>
+    <table style="width:100%; border-collapse: collapse; text-align: left;">
+      <thead>
+        <tr>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Entity</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Kind</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Aliases</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Mentions</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Source Run</th>
+        </tr>
+      </thead>
+      <tbody>{entity_rows}</tbody>
+    </table>
+  </div>
+
+  <div class="card stack">
+    <h3>Graph Relationship Data</h3>
+    <p class="muted">{relationship_caption}</p>
+    <table style="width:100%; border-collapse: collapse; text-align: left;">
+      <thead>
+        <tr>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Type</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Source</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Target</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Artifact</th>
+          <th style="padding:8px;border-bottom:1px solid #1f2937;">Confidence</th>
+        </tr>
+      </thead>
+      <tbody>{relationship_rows}</tbody>
+    </table>
+  </div>
+</section>
+"""
+
+CHAT_TEMPLATE = """
+<section>
+  <h2>Knowledge Chat</h2>
+  <p class="muted">Ask natural language questions about your Instagram knowledge graph.</p>
+  <form class="card stack">
+    <label for="question">Question</label>
+    <textarea id="question" rows="3">{question}</textarea>
+    <button class="btn" type="submit">{button_label}</button>
+  </form>
+  {error_html}
+  {answer_block}
+</section>
+"""
+
 STATES = {
     "us_01_expected.png": {
-        "question": "Who appeared together most often?",
-        "error": "",
-        "answer": "demo_user and utsa_ai_lab appeared together most often in the sample graph.",
-        "latency": "184 ms",
-        "query_id": "id: q-demo-001",
-        "citations": [
-            "fixture-post-001 - entity_a=demo_user, entity_b=utsa_ai_lab, shared_posts=1, post_ids=['C9DEMO001']",
-            "fixture-post-002 - entity_a=machinelearning, entity_b=graph, shared_posts=1, post_ids=['C9DEMO002']",
-        ],
-        "cypher": (
-            "MATCH (a:CanonicalEntity)-[ra]->(p:Post)<-[rb]-(b:CanonicalEntity)\n"
-            "WHERE type(ra) IN ['MENTIONS', 'TAGGED_IN'] AND type(rb) IN ['MENTIONS', 'TAGGED_IN']\n"
-            "AND a.node_id < b.node_id\n"
-            "RETURN coalesce(a.canonical_surface, a.node_id) AS entity_a,\n"
-            "       coalesce(b.canonical_surface, b.node_id) AS entity_b,\n"
-            "       count(DISTINCT p) AS shared_posts,\n"
-            "       collect(DISTINCT p.platform_post_id)[0..5] AS post_ids\n"
-            "ORDER BY shared_posts DESC, entity_a ASC, entity_b ASC LIMIT 5"
-        ),
-        "util": "",
-        "show_out": True,
+        "page": "pipeline",
+        "stats": {
+            "version": "0.1.0",
+            "nodes": 14,
+            "edges": 18,
+        },
+        "sample": {
+            "run_id": "11111111-1111-1111-1111-111111111111",
+            "raw_artifacts": 2,
+            "extraction_records": 2,
+            "dedup_clusters": 10,
+        },
     },
     "us_02_expected.png": {
-        "question": "",
-        "error": "Please enter a question",
-        "answer": "",
-        "latency": "",
-        "query_id": "",
-        "citations": [],
-        "cypher": "",
-        "util": "",
-        "show_out": False,
+        "page": "graph",
+        "stats": {
+            "version": "0.1.0",
+            "nodes": 14,
+            "edges": 18,
+        },
+        "node_labels": [
+            {"name": "CanonicalEntity", "count": 10},
+            {"name": "Post", "count": 2},
+            {"name": "Artifact", "count": 2},
+        ],
+        "relationship_types": [
+            {"name": "SOURCED_FROM", "count": 2},
+            {"name": "MENTIONS", "count": 12},
+            {"name": "TAGGED_IN", "count": 4},
+        ],
+        "relationship_filter": "",
+        "entities": [
+            {
+                "display_name": "C9DEMO001",
+                "node_id": "ent_d7a5ffd74a12ef0c",
+                "entity_kind": "Person",
+                "alias_count": 2,
+                "mention_count": 18,
+                "source_run_id": "11111111-1111-1111-1111-111111111111",
+            },
+            {
+                "display_name": "C9DEMO002",
+                "node_id": "ent_8f3ea87f5b8e9d24",
+                "entity_kind": "Organization",
+                "alias_count": 1,
+                "mention_count": 11,
+                "source_run_id": "11111111-1111-1111-1111-111111111111",
+            },
+        ],
+        "relationships": [
+            {
+                "rel_type": "MENTIONS",
+                "source_display": "C9DEMO001",
+                "source_id": "ent_d7a5ffd74a12ef0c",
+                "source_labels": ["CanonicalEntity"],
+                "target_display": "C9DEMO002",
+                "target_id": "ent_8f3ea87f5b8e9d24",
+                "target_labels": ["CanonicalEntity"],
+                "artifact_id": "art_01",
+                "confidence": 0.93,
+            },
+            {
+                "rel_type": "TAGGED_IN",
+                "source_display": "C9DEMO001",
+                "source_id": "ent_d7a5ffd74a12ef0c",
+                "source_labels": ["CanonicalEntity"],
+                "target_display": "post:post_002",
+                "target_id": "post:post_002",
+                "target_labels": ["Post"],
+                "artifact_id": "art_02",
+                "confidence": 0.88,
+            },
+        ],
     },
     "us_03_expected.png": {
-        "question": "hello",
-        "error": "The model service is not configured. Contact the operator.",
-        "answer": "",
-        "latency": "",
-        "query_id": "",
-        "citations": [],
-        "cypher": "",
-        "util": "",
-        "show_out": False,
+        "page": "chat",
+        "question": "Who appeared together most often?",
+        "button_label": "Ask Graph",
+        "error": "",
+        "answer": "Found 2 evidence row(s). Top row: {\"c.canonical_surface\": \"C9DEMO001\", \"count\": 10}",
+        "query_id": "7986cd4f-c5af-4369-a43d-f922061a9b55",
+        "latency": "1071 ms",
+        "cypher": (
+            "MATCH (c:CanonicalEntity)-[:MENTIONS|TAGGED_IN]->() "
+            "RETURN c.canonical_surface, COUNT(*) AS count "
+            "ORDER BY count DESC LIMIT 50"
+        ),
+        "citations": [
+            {
+                "doc_id": "0",
+                "snippet": "c.canonical_surface=C9DEMO001, count=10"
+            },
+            {
+                "doc_id": "1",
+                "snippet": "c.canonical_surface=C9DEMO002, count=6"
+            }
+        ],
     },
     "us_04_expected.png": {
+        "page": "chat",
         "question": "",
-        "error": "",
-        "answer": "",
-        "latency": "",
-        "query_id": "",
-        "citations": [],
-        "cypher": "",
-        "util": (
-            "{\n"
-            '  "run_id": "11111111-1111-1111-1111-111111111111",\n'
-            '  "raw_artifacts": 3,\n'
-            '  "extraction_records": 3,\n'
-            '  "dedup_clusters": 2\n'
-            "}"
-        ),
-        "show_out": False,
+        "button_label": "Ask Graph",
+        "error": "input text is required",
+        "answer": None,
     },
     "us_05_expected.png": {
-        "question": "",
-        "error": "",
-        "answer": "",
-        "latency": "",
-        "query_id": "",
-        "citations": [],
-        "cypher": "",
-        "util": '{\n  "version": "0.1.0",\n  "nodes": 12,\n  "edges": 9\n}',
-        "show_out": False,
+        "page": "chat",
+        "question": "hello",
+        "button_label": "Ask Graph",
+        "error": "The model service is not configured. Contact the operator.",
+        "answer": None,
     },
 }
 
 
-def _render_html(state: dict[str, object]) -> str:
-    citations = state.get("citations", [])
-    citations_html = (
-        "\n".join(f"<li>{html.escape(str(citation))}</li>" for citation in citations)
-        or "<li>No citations</li>"
+def _render_pipeline_page(state: dict[str, object]) -> str:
+    sample = state.get("sample")
+    sample_card = ""
+    if sample:
+        sample_card = f"""
+        <div class="card stack">
+          <h3>Latest Sample Ingest</h3>
+          <p class="muted">Results from the deterministic fixture ingest.</p>
+          <table style="width:100%; border-collapse: collapse; text-align: left;">
+            <tr style="border-bottom: 1px solid #1f2937;"><th style="padding: 8px;">Run ID</th><td style="padding: 8px;">{sample['run_id']}</td></tr>
+            <tr style="border-bottom: 1px solid #1f2937;"><th style="padding: 8px;">Raw Artifacts</th><td style="padding: 8px;">{sample['raw_artifacts']}</td></tr>
+            <tr style="border-bottom: 1px solid #1f2937;"><th style="padding: 8px;">Extraction Records</th><td style="padding: 8px;">{sample['extraction_records']}</td></tr>
+            <tr><th style="padding: 8px;">Dedup Clusters</th><td style="padding: 8px;">{sample['dedup_clusters']}</td></tr>
+          </table>
+        </div>
+        """
+    return PIPELINE_TEMPLATE.format(sample_card=sample_card)
+
+
+def _render_graph_page(state: dict[str, object]) -> str:
+    error = state.get("error")
+    error_html = f'<p class="error">{html.escape(str(error))}</p>' if error else ""
+    node_labels = state.get("node_labels") or []
+    relationship_types = state.get("relationship_types") or []
+    entities = state.get("entities") or []
+    relationships = state.get("relationships") or []
+    relationship_filter = str(state.get("relationship_filter") or "")
+
+    node_label_rows = "".join(
+        f"<tr><td style='padding:8px;border-bottom:1px solid #1f2937;'>{html.escape(str(item['name']))}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #1f2937;'>{item['count']}</td></tr>"
+        for item in node_labels
     )
+    relationship_count_rows = "".join(
+        f"<tr><td style='padding:8px;border-bottom:1px solid #1f2937;'>{html.escape(str(item['name']))}</td>"
+        f"<td style='padding:8px;border-bottom:1px solid #1f2937;'>{item['count']}</td></tr>"
+        for item in relationship_types
+    )
+    relationship_options = "<option>All relationship types</option>" + "".join(
+        "<option{selected}>{name} ({count})</option>".format(
+            selected=" selected" if str(item["name"]) == relationship_filter else "",
+            name=html.escape(str(item["name"])),
+            count=item["count"],
+        )
+        for item in relationship_types
+    )
+    entity_rows = "".join(
+        "<tr>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'><div style='font-weight:600'>{display_name}</div>"
+        "<div class='muted' style='font-size:0.82rem'>{node_id}</div></td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'>{kind}</td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'>{aliases}</td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'>{mentions}</td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'>{run_id}</td>"
+        "</tr>".format(
+            display_name=html.escape(str(item["display_name"])),
+            node_id=html.escape(str(item["node_id"])),
+            kind=html.escape(str(item["entity_kind"])),
+            aliases=item["alias_count"],
+            mentions=item["mention_count"],
+            run_id=html.escape(str(item["source_run_id"])),
+        )
+        for item in entities
+    )
+    relationship_rows = "".join(
+        "<tr>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'>{rel_type}</td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'><div style='font-weight:600'>{source}</div>"
+        "<div class='muted' style='font-size:0.82rem'>{source_labels} · {source_id}</div></td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'><div style='font-weight:600'>{target}</div>"
+        "<div class='muted' style='font-size:0.82rem'>{target_labels} · {target_id}</div></td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'>{artifact}</td>"
+        "<td style='padding:8px;border-bottom:1px solid #1f2937;'>{confidence}</td>"
+        "</tr>".format(
+            rel_type=html.escape(str(item["rel_type"])),
+            source=html.escape(str(item["source_display"])),
+            source_labels=html.escape(", ".join(item["source_labels"])),
+            source_id=html.escape(str(item["source_id"])),
+            target=html.escape(str(item["target_display"])),
+            target_labels=html.escape(", ".join(item["target_labels"])),
+            target_id=html.escape(str(item["target_id"])),
+            artifact=html.escape(str(item["artifact_id"])),
+            confidence=f"{float(item['confidence']):.2f}",
+        )
+        for item in relationships
+    )
+
+    relationship_caption = (
+        f"Showing live rows for {relationship_filter}." if relationship_filter else "Showing live rows across all relationship types."
+    )
+    return GRAPH_TEMPLATE.format(
+        error_html=error_html,
+        node_label_rows=node_label_rows,
+        relationship_options=relationship_options,
+        relationship_count_rows=relationship_count_rows,
+        entity_rows=entity_rows,
+        relationship_caption=html.escape(relationship_caption),
+        relationship_rows=relationship_rows,
+    )
+
+
+def _render_chat_page(state: dict[str, object]) -> str:
+    error = state.get("error")
+    error_html = f'<p class="error">{html.escape(str(error))}</p>' if error else ""
+    answer_block = ""
+    if state.get("answer"):
+        citations_json = __import__("json").dumps(state["citations"], indent=2)
+        answer_block = """
+        <div class="stack">
+          <div class="card">
+            <h3>Answer</h3>
+            <p>{answer}</p>
+            <p class="muted">query_id: {query_id}</p>
+            <p class="muted">latency: {latency}</p>
+          </div>
+          <div class="card">
+            <h3>Cypher</h3>
+            <pre>{cypher}</pre>
+          </div>
+          <div class="card">
+            <h3>Citations ({citation_count})</h3>
+            <pre>{citations}</pre>
+          </div>
+        </div>
+        """.format(
+            answer=html.escape(str(state["answer"])),
+            query_id=html.escape(str(state["query_id"])),
+            latency=html.escape(str(state["latency"])),
+            cypher=html.escape(str(state["cypher"])),
+            citation_count=len(state["citations"]),
+            citations=html.escape(citations_json),
+        )
+    return CHAT_TEMPLATE.format(
+        question=html.escape(str(state.get("question", ""))),
+        button_label=html.escape(str(state.get("button_label", "Ask Graph"))),
+        error_html=error_html,
+        answer_block=answer_block,
+    )
+
+
+def _render_html(state: dict[str, object]) -> str:
+    page = str(state["page"])
+    if page == "pipeline":
+        page_html = _render_pipeline_page(state)
+    elif page == "graph":
+        page_html = _render_graph_page(state)
+    else:
+        page_html = _render_chat_page(state)
+
     return BASE_TEMPLATE.format(
-        question=html.escape(str(state["question"])),
-        error_html=html.escape(str(state["error"])),
-        answer_html=html.escape(str(state["answer"])),
-        latency_html=html.escape(str(state["latency"])),
-        query_id_html=html.escape(str(state["query_id"])),
-        citations_html=citations_html,
-        cypher_html=html.escape(str(state["cypher"])),
-        util_html=html.escape(str(state["util"])),
-        out_hidden="" if state["show_out"] else "hidden",
+        chat_active="active" if page == "chat" else "",
+        agents_active="active" if page == "pipeline" else "",
+        graph_active="active" if page == "graph" else "",
+        page_html=page_html,
     )
 
 
@@ -179,42 +507,22 @@ def _render_png(html_path: Path, png_path: Path) -> None:
     subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 
-def _render_gif(frame_paths: list[Path], gif_path: Path) -> None:
-    from PIL import Image
-
-    frames = [Image.open(path) for path in frame_paths]
-    frames[0].save(
-        gif_path,
-        save_all=True,
-        append_images=frames[1:],
-        duration=1300,
-        loop=0,
-    )
-    for frame in frames:
-        frame.close()
-
-
 def main() -> int:
+    if not Path(CHROME).exists():
+        print(f"ERROR: Chrome binary not found at {CHROME}")
+        print("Please update the CHROME path in scripts/render_story_assets.py")
+        return 1
+
+    print(f"Rendering story assets to {STORIES_DIR}...")
     STORIES_DIR.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="story-assets-") as tmp:
         tmp_dir = Path(tmp)
         for name, state in STATES.items():
+            print(f"  -> {name}", end="...", flush=True)
             html_path = tmp_dir / f"{name}.html"
             html_path.write_text(_render_html(state), encoding="utf-8")
             _render_png(html_path, STORIES_DIR / name)
-
-    try:
-        _render_gif(
-            [
-                STORIES_DIR / "us_01_expected.png",
-                STORIES_DIR / "us_04_expected.png",
-                STORIES_DIR / "us_05_expected.png",
-            ],
-            ASSETS_DIR / "demo.gif",
-        )
-    except ModuleNotFoundError:
-        print("Pillow is not installed; skipped docs/assets/demo.gif")
-
+            print(" DONE")
     return 0
 
 

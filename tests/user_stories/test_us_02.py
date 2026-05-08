@@ -1,24 +1,38 @@
-"""Acceptance test for US-02 [ERROR PATH]: Empty input shows an actionable error."""
+"""Acceptance test for US-02: User can inspect graph statistics."""
 
 from __future__ import annotations
 
+import myproject.api as api_mod
 import pytest
 from fastapi.testclient import TestClient
 
 
+class _FakeRetriever:
+    def graph_stats(self) -> dict[str, int]:
+        return {"nodes": 12, "edges": 9}
+
+    def close(self) -> None:
+        pass
+
+
 @pytest.mark.user_story("US-02")
-def test_us_02_empty_input_returns_error() -> None:
+def test_us_02_graph_stats(monkeypatch: pytest.MonkeyPatch) -> None:
     """
-    Given the application is running,
-    When the user clicks Submit without typing anything,
-    Then an inline error message appears stating "Please enter a question",
-    and `POST /api/query` returns 400 `{"error": "input text is required"}`.
+    Given the app is running and connected to Neo4j,
+    When the user clicks "Refresh graph stats",
+    Then the response contains `version`, `nodes`, and `edges` integer fields,
+    and `GET /api/stats` returns 200.
     """
-    from myproject.api import app
+    # Patch the Retriever symbol the API imports so the test does not need a
+    # live Neo4j server.
+    monkeypatch.setattr("myproject.retriever.Retriever", _FakeRetriever)
+    with TestClient(api_mod.app) as client:
+        response = client.get("/api/stats")
 
-    with TestClient(app) as client:
-        response = client.post("/api/query", json={"text": ""})
-
-    assert response.status_code == 400
+    assert response.status_code == 200
     body = response.json()
-    assert "input text is required" in body.get("error", "").lower()
+    assert "version" in body
+    assert isinstance(body["nodes"], int)
+    assert isinstance(body["edges"], int)
+    assert body["nodes"] == 12
+    assert body["edges"] == 9

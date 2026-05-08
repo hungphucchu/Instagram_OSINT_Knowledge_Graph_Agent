@@ -1,11 +1,11 @@
 """Sample pipeline runner.
 
 The Makefile target ``make reproduce`` runs ``python -m myproject.pipeline
---sample`` to exercise the full ingest path on a tiny fixture so the TA can
+--sample`` to exercise the full ingest path on a tiny fixture so the reviewer can
 validate end-to-end behaviour on a clean machine without spending API credits.
 
 The ``run_sample_ingest`` helper is also called by ``POST /api/pipeline/sample``
-(see ``docs/STORIES.md`` US-04) and returns a JSON-friendly summary the UI can
+(see ``docs/STORIES.md`` US-01) and returns a JSON-friendly summary the UI can
 display.
 
 Internally the heavy lifting is delegated to the existing ingest agents under

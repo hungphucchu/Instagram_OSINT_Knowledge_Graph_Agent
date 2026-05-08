@@ -1,4 +1,4 @@
-"""Acceptance test for US-04: User can run a sample ingest from the UI."""
+"""Acceptance test for US-04 [ERROR PATH]: Empty input shows an actionable error."""
 
 from __future__ import annotations
 
@@ -7,22 +7,18 @@ from fastapi.testclient import TestClient
 
 
 @pytest.mark.user_story("US-04")
-def test_us_04_sample_pipeline_returns_counts() -> None:
+def test_us_04_empty_input_returns_error() -> None:
     """
-    Given the app is running on a clean database,
-    When the user clicks "Run sample pipeline",
-    Then the response contains `run_id`, `raw_artifacts`, `extraction_records`
-    and `dedup_clusters` integer fields with non-negative counts consistent
-    with `fixtures/raw_artifacts.json`.
+    Given the application is running,
+    When the user clicks Submit without typing anything,
+    Then an inline error message appears stating "Please enter a question",
+    and `POST /api/query` returns 400 `{"error": "input text is required"}`.
     """
     from myproject.api import app
 
     with TestClient(app) as client:
-        response = client.post("/api/pipeline/sample")
+        response = client.post("/api/query", json={"text": ""})
 
-    assert response.status_code == 200
+    assert response.status_code == 400
     body = response.json()
-    assert {"run_id", "raw_artifacts", "extraction_records", "dedup_clusters"} <= set(body)
-    assert body["raw_artifacts"] >= 1
-    assert body["extraction_records"] >= 1
-    assert body["dedup_clusters"] >= 0
+    assert "input text is required" in body.get("error", "").lower()

@@ -25,7 +25,7 @@ LOG = logging.getLogger("myproject.router")
 
 
 class EmptyInputError(ValueError):
-    """Raised when the user submits a blank question (US-02 error path)."""
+    """Raised when the user submits a blank question (US-04 error path)."""
 
 
 def _agent() -> Any:
@@ -34,7 +34,7 @@ def _agent() -> Any:
     Kept as a function (not a module-level singleton) so unit tests can patch
     it cleanly and so the FastAPI app does not require Neo4j to be reachable
     at import time. The function does the LLM-credential check *before*
-    instantiating the Neo4j driver, so missing-key requests (US-03) fail
+        instantiating the Neo4j driver, so missing-key requests (US-05) fail
     fast with HTTP 503 instead of hanging on a TCP connect.
     """
     from agents.graph_insertion import Neo4jGraphStore  # noqa: WPS433

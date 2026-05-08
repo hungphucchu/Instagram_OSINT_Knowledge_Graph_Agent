@@ -12,7 +12,7 @@
 ## Verification
 
 Run `git shortlog -sne --all --no-merges` and write the output to
-`reports/git_contributions.txt`. The TA compares this distribution to the
+`reports/git_contributions.txt`. The reviewer compares this distribution to the
 table above; each member's commit share must be within ±15 percentage points
 of declared share.
 

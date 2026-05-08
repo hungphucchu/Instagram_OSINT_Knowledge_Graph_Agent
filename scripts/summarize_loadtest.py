@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,7 @@ def _pick_headline_row(rows: list[dict[str, str]]) -> dict[str, str]:
 
 
 def main() -> int:
+    quiet = "--quiet" in sys.argv[1:]
     stats_rows = _read_csv(STATS_CSV)
     failure_rows = _read_csv(FAILURES_CSV)
     exception_rows = _read_csv(EXCEPTIONS_CSV)
@@ -92,7 +94,8 @@ def main() -> int:
         },
     }
     BENCHMARKS_JSON.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(payload["summary"], indent=2))
+    if not quiet:
+        print(json.dumps(payload["summary"], indent=2))
     return 0
 
 

@@ -3,13 +3,13 @@
 
 Compute the final rubric score from artifacts under reports/ and grading/.
 
-Run from the repo root after the TA has executed every other check:
+Run from the repo root after the reviewer has executed every other check:
 
     python3 grading/grade.py
 
 Output:
   * grading/score.json      machine readable score breakdown
-  * grading/score.md        human readable summary the TA reviews
+  * grading/score.md        human readable summary the reviewer reviews
 
 Exit code 0 always (the script reports the score; it does not pass/fail).
 
@@ -142,7 +142,7 @@ def score_reproducibility_manifest() -> tuple[float, list[str]]:
         notes.append(f"missing prereq(s): {', '.join(missing)}")
         return 0.0, notes
 
-    # The TA records reproduce result in reports/reproduce_status.txt:
+    # The reviewer records reproduce result in reports/reproduce_status.txt:
     #   "full" | "partial" | "failed"
     status_file = REPORTS / "reproduce_status.txt"
     status = status_file.read_text().strip().lower() if status_file.exists() else ""
@@ -165,12 +165,12 @@ def score_build_and_deployment() -> tuple[float, list[str]]:
         notes.append(f"missing prereq(s): {', '.join(missing)}")
         return 0.0, notes
 
-    # The TA writes the build result to reports/build_status.txt:
+    # The reviewer writes the build result to reports/build_status.txt:
     #   line 1: "ok" or "failed"
     #   line 2: integer count of undocumented manual steps
     status_file = REPORTS / "build_status.txt"
     if not status_file.exists():
-        notes.append("build_status.txt not recorded by TA")
+        notes.append("build_status.txt not recorded by reviewer")
         return 0.0, notes
     lines = status_file.read_text().splitlines()
     state = lines[0].strip().lower() if lines else ""
@@ -250,7 +250,7 @@ def score_stress_and_robustness() -> tuple[float, list[str]]:
     notes = []
     score = 0.0
 
-    # 4 pts: load test threshold met (TA records in reports/loadtest_status.txt)
+    # 4 pts: load test threshold met (reviewer records in reports/loadtest_status.txt)
     lt_status = REPORTS / "loadtest_status.txt"
     if lt_status.exists() and lt_status.read_text().strip().lower() == "ok":
         score += 4
@@ -275,7 +275,7 @@ def score_code_quality() -> tuple[float, list[str]]:
     notes = []
     score = 0.0
 
-    # 3 pts: make lint exit 0 (TA records in reports/lint_exit.txt)
+    # 3 pts: make lint exit 0 (reviewer records in reports/lint_exit.txt)
     lint_file = REPORTS / "lint_exit.txt"
     if lint_file.exists() and lint_file.read_text().strip() == "0":
         score += 3
@@ -314,7 +314,7 @@ def score_code_quality() -> tuple[float, list[str]]:
 def score_logging() -> tuple[float, list[str]]:
     weight = CATEGORY_WEIGHTS["logging"]
     notes = []
-    # The TA writes "complete" / "partial" / "missing" to reports/logging_trace.txt
+    # The reviewer writes "complete" / "partial" / "missing" to reports/logging_trace.txt
     f = REPORTS / "logging_trace.txt"
     if not f.exists():
         notes.append("logging_trace.txt absent")
@@ -333,12 +333,12 @@ def score_logging() -> tuple[float, list[str]]:
 def score_app_functionality() -> tuple[float, list[str]]:
     weight = CATEGORY_WEIGHTS["application_functionality_and_ui"]
     notes = []
-    # The TA records each story result in reports/walkthrough.md following
+    # The reviewer records each story result in reports/walkthrough.md following
     # the template format. We parse a simple machine-readable section the
-    # TA fills out: each line "US-NN: pass" or "US-NN: fail".
+    # reviewer fills out: each line "US-NN: pass" or "US-NN: fail".
     f = REPORTS / "walkthrough_results.txt"
     if not f.exists():
-        notes.append("walkthrough_results.txt absent (TA fills during Phase 3)")
+        notes.append("walkthrough_results.txt absent (reviewer fills during Phase 3)")
         return 0.0, notes
     lines = [l.strip() for l in f.read_text().splitlines() if l.strip()]
     total = sum(1 for l in lines if l.lower().endswith(("pass", "fail")))
@@ -355,7 +355,7 @@ def score_app_functionality() -> tuple[float, list[str]]:
 def score_user_documentation() -> tuple[float, list[str]]:
     weight = CATEGORY_WEIGHTS["user_documentation"]
     notes = []
-    # The TA fills reports/docs_check.txt with three lines:
+    # The reviewer fills reports/docs_check.txt with three lines:
     #   line 1: cold-read result, integer 0..3 (3 = clean cold read)
     #   line 2: usage guide completeness, integer 0..2
     #   line 3: screenshot match, integer 0..1
@@ -385,7 +385,7 @@ def score_team_contributions() -> tuple[float, list[str]]:
     if not file_exists("reports/git_contributions.txt"):
         notes.append("reports/git_contributions.txt missing")
         return 0.0, notes
-    # Score is binary on two conditions; the TA records pass/fail in
+    # Score is binary on two conditions; the reviewer records pass/fail in
     # reports/team_check.txt as two lines, "pass" or "fail" each:
     #   line 1: percentage match within ±15 points
     #   line 2: each member committed across at least 2 of src/tests/docs

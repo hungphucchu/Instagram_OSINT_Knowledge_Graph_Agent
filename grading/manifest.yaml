@@ -38,6 +38,6 @@ dataset_versions:
     version: "varies per ingest run"
     sha256: "n/a (export is run-specific)"
 
-# Commit hash the team intends the TA to grade. `scripts/reproduce.sh` refreshes
+# Commit hash the team intends the reviewer to grade. `scripts/reproduce.sh` refreshes
 # this automatically when the repo has a real HEAD commit.
-commit_sha: "NO_GIT_HEAD_AVAILABLE"
+commit_sha: "f66f22709f87cbd0266872977e6388e5d31f1c5e"

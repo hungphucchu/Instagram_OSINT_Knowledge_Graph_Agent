@@ -178,3 +178,49 @@ def test_query_agent_repairs_count_brace_syntax():
     fixed = QueryAgent._repair_generated_cypher(raw)
     assert "COUNT({(" not in fixed
     assert "COUNT { (c1)-[:COLLABORATES_WITH]->(c2) }" in fixed
+
+
+def test_query_agent_repairs_count_pattern_expression_syntax():
+    raw = (
+        "MATCH (c1:CanonicalEntity)-[:COLLABORATES_WITH]->(c2:CanonicalEntity) "
+        "RETURN c1, c2, COUNT((c1)-[:COLLABORATES_WITH]->(c2)) AS collaborationCount LIMIT 50"
+    )
+    fixed = QueryAgent._repair_generated_cypher(raw)
+    assert "COUNT((" not in fixed
+    assert "COUNT { (c1)-[:COLLABORATES_WITH]->(c2) } AS collaborationCount" in fixed
+
+
+def test_query_agent_retries_with_deterministic_fallback_on_execution_error():
+    settings = Settings(query_llm_enabled=True, query_llm_api_key="k")
+    rows = [
+        {
+            "entity_a": "Alice",
+            "entity_b": "Bob",
+            "shared_posts": 3,
+            "post_ids": ["p1", "p2", "p3"],
+        }
+    ]
+
+    class FlakyGraphStore(FakeGraphStore):
+        def run_read(self, query, params=None):
+            self.last_query = query
+            if "DISTINCT labels" in query:
+                return [{"labels": ["CanonicalEntity"]}, {"labels": ["Post"]}]
+            if "DISTINCT type" in query:
+                return [{"type": "MENTIONS"}]
+            if "COLLABORATES_WITH" in query:
+                raise RuntimeError("neo4j syntax error")
+            return rows
+
+    fake = FlakyGraphStore()
+    agent = QueryAgent(settings=settings, graph_store=fake)
+    agent._generate_cypher_llm = lambda _: (  # type: ignore[method-assign]
+        "MATCH (c1:CanonicalEntity)-[:COLLABORATES_WITH]->(c2:CanonicalEntity) "
+        "RETURN c1, c2, COUNT((c1)-[:COLLABORATES_WITH]->(c2)) AS collaborationCount LIMIT 50"
+    )
+    resp = agent.answer(
+        QueryRequest(question="Who appeared together most often?", include_cypher=True)
+    )
+    assert "Found 1 evidence row(s)." in resp.answer
+    assert any("deterministic_fallback_used" in w for w in resp.warnings)
+    assert "shared_posts" in (resp.cypher or "")
