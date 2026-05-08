@@ -40,4 +40,4 @@ dataset_versions:
 
 # Commit hash the team intends the reviewer to grade. `scripts/reproduce.sh` refreshes
 # this automatically when the repo has a real HEAD commit.
-commit_sha: "f7214e6d9f585dac3fb9e5d7d84971b791b62f10"
+commit_sha: "32cd9f7cad692d13ed8341c7d528e442c903826e"

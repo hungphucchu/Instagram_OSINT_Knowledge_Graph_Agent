@@ -101,7 +101,10 @@ export default function GraphPage() {
 
       <div className="actions" style={{ justifyContent: 'flex-end' }}>
         <button className="btn ghost" disabled={loading} onClick={() => void refreshOverview()}>
-          {loading ? "Refreshing..." : "Refresh Graph Overview"}
+          <span className="btn-content">
+            {loading ? <span className="loading-spinner" aria-hidden="true" /> : null}
+            {loading ? "Refreshing..." : "Refresh Graph Overview"}
+          </span>
         </button>
       </div>
 

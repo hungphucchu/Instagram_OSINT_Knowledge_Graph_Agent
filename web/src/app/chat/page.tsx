@@ -41,7 +41,10 @@ export default function ChatPage() {
         <label htmlFor="question">Question</label>
         <textarea id="question" value={question} onChange={(e) => setQuestion(e.target.value)} rows={3} />
         <button className="btn" disabled={loading} type="submit">
-          {loading ? "Running..." : "Ask Graph"}
+          <span className="btn-content">
+            {loading ? <span className="loading-spinner" aria-hidden="true" /> : null}
+            {loading ? "Running..." : "Ask Graph"}
+          </span>
         </button>
       </form>
 

@@ -21,9 +21,12 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+import threading
+import uuid
+from datetime import UTC, datetime
+from typing import Any, Literal, cast
 
-from fastapi import FastAPI, Query, Request, Response
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -252,17 +255,32 @@ class PipelineFullOut(BaseModel):
     quality: dict[str, Any] = Field(default_factory=dict)
 
 
-@app.post("/api/pipeline/sample", response_model=PipelineSampleOut)
-def pipeline_sample() -> PipelineSampleOut:
-    from myproject.pipeline import run_sample_ingest
-
-    summary = run_sample_ingest()
-    return PipelineSampleOut(**summary)
+class PipelineFullJobSubmitOut(BaseModel):
+    job_id: str
+    status: Literal["queued", "running", "completed", "failed"]
+    created_at: str
 
 
-@app.post("/api/pipeline/full", response_model=PipelineFullOut)
-def pipeline_full() -> PipelineFullOut:
-    """Run the configured full ingest pipeline using current `.env` settings."""
+class PipelineFullJobStatusOut(BaseModel):
+    job_id: str
+    status: Literal["queued", "running", "completed", "failed"]
+    created_at: str
+    started_at: str | None = None
+    finished_at: str | None = None
+    error: str | None = None
+    result: PipelineFullOut | None = None
+
+
+_pipeline_full_jobs_lock = threading.Lock()
+_pipeline_full_jobs: dict[str, dict[str, Any]] = {}
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def _run_pipeline_full_sync() -> PipelineFullOut:
+    """Run full ingest synchronously and return the typed API payload."""
     from agents.pipeline import (
         PipelineInput,
         PipelineRuntime,
@@ -301,6 +319,100 @@ def pipeline_full() -> PipelineFullOut:
         dedup=final.get("dedup") or {},
         graph_insert=final.get("graph_insert") or {},
         quality=final.get("quality") or {},
+    )
+
+
+def _run_pipeline_full_job(job_id: str) -> None:
+    with _pipeline_full_jobs_lock:
+        job = _pipeline_full_jobs.get(job_id)
+        if job is None:
+            return
+        job["status"] = "running"
+        job["started_at"] = _utc_now_iso()
+    log_event(LOG, "pipeline_full_job_started", job_id=job_id)
+    try:
+        result = _run_pipeline_full_sync()
+    except Exception as exc:
+        with _pipeline_full_jobs_lock:
+            job = _pipeline_full_jobs.get(job_id)
+            if job is not None:
+                job["status"] = "failed"
+                job["finished_at"] = _utc_now_iso()
+                job["error"] = str(exc)
+        log_event(
+            LOG, "pipeline_full_job_failed", level=logging.ERROR, job_id=job_id, error=str(exc)
+        )
+        return
+
+    with _pipeline_full_jobs_lock:
+        job = _pipeline_full_jobs.get(job_id)
+        if job is not None:
+            job["status"] = "completed"
+            job["finished_at"] = _utc_now_iso()
+            job["result"] = result.model_dump()
+            job["error"] = None
+    log_event(LOG, "pipeline_full_job_completed", job_id=job_id, run_id=result.run_id)
+
+
+def _start_pipeline_full_job() -> PipelineFullJobSubmitOut:
+    job_id = f"job_{uuid.uuid4().hex[:12]}"
+    created_at = _utc_now_iso()
+    with _pipeline_full_jobs_lock:
+        _pipeline_full_jobs[job_id] = {
+            "job_id": job_id,
+            "status": "queued",
+            "created_at": created_at,
+            "started_at": None,
+            "finished_at": None,
+            "error": None,
+            "result": None,
+        }
+    thread = threading.Thread(target=_run_pipeline_full_job, args=(job_id,), daemon=True)
+    thread.start()
+    return PipelineFullJobSubmitOut(job_id=job_id, status="queued", created_at=created_at)
+
+
+@app.post("/api/pipeline/sample", response_model=PipelineSampleOut)
+def pipeline_sample() -> PipelineSampleOut:
+    from myproject.pipeline import run_sample_ingest
+
+    summary = run_sample_ingest()
+    return PipelineSampleOut(**summary)
+
+
+@app.post("/api/pipeline/full", response_model=PipelineFullOut)
+def pipeline_full() -> PipelineFullOut:
+    """Run the configured full ingest pipeline using current `.env` settings."""
+    return _run_pipeline_full_sync()
+
+
+@app.post("/api/pipeline/full/submit", response_model=PipelineFullJobSubmitOut)
+def pipeline_full_submit() -> PipelineFullJobSubmitOut:
+    """Submit full ingest as background job and return immediately."""
+    return _start_pipeline_full_job()
+
+
+@app.get("/api/pipeline/full/jobs/{job_id}", response_model=PipelineFullJobStatusOut)
+def pipeline_full_job_status(job_id: str) -> PipelineFullJobStatusOut:
+    """Return current status for a submitted full-ingest job."""
+    with _pipeline_full_jobs_lock:
+        job = dict(_pipeline_full_jobs.get(job_id) or {})
+    if not job:
+        raise HTTPException(status_code=404, detail=f"job not found: {job_id}")
+    status_value = str(job.get("status") or "failed")
+    if status_value not in {"queued", "running", "completed", "failed"}:
+        status_value = "failed"
+    result_payload = None
+    if isinstance(job.get("result"), dict):
+        result_payload = PipelineFullOut.model_validate(job["result"])
+    return PipelineFullJobStatusOut(
+        job_id=str(job.get("job_id") or job_id),
+        status=cast(Literal["queued", "running", "completed", "failed"], status_value),
+        created_at=str(job.get("created_at") or ""),
+        started_at=job.get("started_at"),
+        finished_at=job.get("finished_at"),
+        error=job.get("error"),
+        result=result_payload,
     )
 
 

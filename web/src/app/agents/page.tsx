@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import type {
+  PipelineFullJobStatusResponse,
+  PipelineFullJobSubmitResponse,
   PipelineFullResponse,
   PipelineSampleResponse
 } from "@/lib/types";
@@ -14,6 +16,28 @@ type PhaseRow = {
   status: string;
   detail: string;
 };
+
+async function readApiPayload(res: Response): Promise<{ json: unknown | null; text: string }> {
+  const raw = await res.text();
+  try {
+    return { json: JSON.parse(raw) as unknown, text: raw };
+  } catch {
+    return { json: null, text: raw };
+  }
+}
+
+function extractErrorMessage(
+  payload: unknown,
+  fallback: string
+): string {
+  if (payload && typeof payload === "object" && "error" in payload) {
+    const maybeError = (payload as { error?: unknown }).error;
+    if (typeof maybeError === "string" && maybeError.trim()) {
+      return maybeError;
+    }
+  }
+  return fallback;
+}
 
 function summarizePhase(step: string, payload: Record<string, unknown>): PhaseRow {
   if (step === "collection") {
@@ -56,17 +80,25 @@ export default function AgentsPage() {
   const [error, setError] = useState("");
   const [sample, setSample] = useState<PipelineSampleResponse | null>(null);
   const [fullRun, setFullRun] = useState<PipelineFullResponse | null>(null);
+  const [fullLogs, setFullLogs] = useState<string[]>([]);
+  const [fullRunState, setFullRunState] = useState<"idle" | "running" | "done" | "failed">("idle");
+
+  function appendFullLog(message: string) {
+    const stamp = new Date().toLocaleTimeString();
+    setFullLogs((prev) => [...prev, `[${stamp}] ${message}`]);
+  }
 
   async function runSample() {
     setLoadingAction("sample");
     setError("");
     try {
       const res = await fetch("/api/pipeline/sample", { method: "POST" });
-      const data = await res.json();
+      const { json, text } = await readApiPayload(res);
       if (!res.ok) {
-        throw new Error(data.error || "Failed to run sample ingest");
+        const fallback = text.trim() || `Failed to run sample ingest (HTTP ${res.status})`;
+        throw new Error(extractErrorMessage(json, fallback));
       }
-      setSample(data as PipelineSampleResponse);
+      setSample((json ?? {}) as PipelineSampleResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -77,18 +109,95 @@ export default function AgentsPage() {
   async function runFullIngest() {
     setLoadingAction("full");
     setError("");
+    setFullRunState("running");
+    setFullLogs([]);
+    appendFullLog("Full ingest requested from Pipeline Console.");
+    appendFullLog("Submitting job to /api/pipeline/full/submit.");
+    let elapsed = 0;
+    const stageHints = [
+      "Collection phase running...",
+      "Extraction phase running...",
+      "Deduplication phase running...",
+      "Graph insertion phase running...",
+      "Quality gate phase running..."
+    ];
+    let stageIndex = 0;
     try {
-      const res = await fetch("/api/pipeline/full", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to run full ingest");
+      const submitRes = await fetch("/api/pipeline/full/submit", { method: "POST" });
+      const { json: submitJson, text: submitText } = await readApiPayload(submitRes);
+      if (!submitRes.ok) {
+        const fallback = submitText.trim() || `Failed to submit full ingest (HTTP ${submitRes.status})`;
+        throw new Error(extractErrorMessage(submitJson, fallback));
       }
-      setFullRun(data as PipelineFullResponse);
+      const submitted = (submitJson ?? {}) as PipelineFullJobSubmitResponse;
+      if (!submitted.job_id) {
+        throw new Error("Backend did not return a job_id for full ingest.");
+      }
+      appendFullLog(`Job queued: ${submitted.job_id}`);
+
+      // Poll status endpoint until terminal state.
+      let pollCount = 0;
+      while (true) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000));
+        elapsed += 2;
+        pollCount += 1;
+
+        if (stageIndex < stageHints.length && elapsed >= (stageIndex + 1) * 6) {
+          appendFullLog(stageHints[stageIndex]);
+          stageIndex += 1;
+        } else if (pollCount % 3 === 0) {
+          appendFullLog(`Still running... ${elapsed}s elapsed.`);
+        }
+
+        const statusRes = await fetch(`/api/pipeline/full/jobs/${submitted.job_id}`, { cache: "no-store" });
+        const { json: statusJson, text: statusText } = await readApiPayload(statusRes);
+        if (!statusRes.ok) {
+          const fallback = statusText.trim() || `Failed to read full ingest status (HTTP ${statusRes.status})`;
+          throw new Error(extractErrorMessage(statusJson, fallback));
+        }
+        const job = (statusJson ?? {}) as PipelineFullJobStatusResponse;
+        if (job.status === "queued" && pollCount % 2 === 0) {
+          appendFullLog("Job still queued.");
+          continue;
+        }
+        if (job.status === "running" && pollCount % 2 === 0) {
+          appendFullLog("Job running on backend.");
+          continue;
+        }
+        if (job.status === "failed") {
+          throw new Error(job.error || "Full ingest job failed.");
+        }
+        if (job.status !== "completed") {
+          continue;
+        }
+
+        const parsed = (job.result ?? null) as PipelineFullResponse | null;
+        if (!parsed) {
+          throw new Error("Full ingest completed but no result payload was returned.");
+        }
+        setFullRun(parsed);
+        appendFullLog("Backend reported job completed.");
+        appendFullLog(`Run ID: ${parsed.run_id || "unknown"}`);
+        appendFullLog(`Last step: ${parsed.last_step ?? "unknown"}`);
+        for (const row of [
+          summarizePhase("collection", parsed.collection),
+          summarizePhase("extraction", parsed.extraction),
+          summarizePhase("dedup", parsed.dedup),
+          summarizePhase("graph_insert", parsed.graph_insert),
+          summarizePhase("quality", parsed.quality)
+        ]) {
+          appendFullLog(`[${row.step}] status=${row.status}; ${row.detail}`);
+        }
+        appendFullLog(parsed.succeeded ? "Full ingest completed successfully." : "Full ingest completed with warnings/errors.");
+        setFullRunState("done");
+        break;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoadingAction(null);
+      appendFullLog(err instanceof Error ? `Full ingest failed: ${err.message}` : "Full ingest failed: unknown error");
+      setFullRunState("failed");
     }
+    setLoadingAction(null);
   }
 
   const phaseRows = fullRun
@@ -114,16 +223,42 @@ export default function AgentsPage() {
       <div className="card stack" style={{ borderLeft: '4px solid #3b82f6' }}>
         <div className="actions">
           <button className="btn" disabled={loadingAction !== null} onClick={runSample}>
-            {loadingAction === "sample" ? "Running Sample..." : "Run Sample Ingest"}
+            <span className="btn-content">
+              {loadingAction === "sample" ? <span className="loading-spinner" aria-hidden="true" /> : null}
+              {loadingAction === "sample" ? "Running Sample..." : "Run Sample Ingest"}
+            </span>
           </button>
           <button className="btn secondary" disabled={loadingAction !== null} onClick={runFullIngest}>
-            {loadingAction === "full" ? "Running Full Ingest..." : "Run Full Ingest"}
+            <span className="btn-content">
+              {loadingAction === "full" ? <span className="loading-spinner" aria-hidden="true" /> : null}
+              {loadingAction === "full" ? "Running Full Ingest..." : "Run Full Ingest"}
+            </span>
           </button>
         </div>
         <p className="muted" style={{ fontSize: '0.85rem' }}>Select a workflow to begin populating the knowledge graph.</p>
       </div>
 
       {error ? <p className="error">{error}</p> : null}
+
+      {fullRunState !== "idle" ? (
+        <div className="card stack">
+          <div className="section-header">
+            <h3>Full Ingest Run Log</h3>
+            <span
+              className={`status-pill ${
+                fullRunState === "done" ? "ok" : fullRunState === "failed" ? "warn" : ""
+              }`}
+            >
+              {fullRunState === "running"
+                ? "Running"
+                : fullRunState === "done"
+                ? "Completed"
+                : "Failed"}
+            </span>
+          </div>
+          <pre className="log-panel">{fullLogs.join("\n") || "No logs yet."}</pre>
+        </div>
+      ) : null}
 
       {sample ? (
         <div className="card stack">

@@ -78,6 +78,21 @@ body {
   cursor: pointer;
 }
 
+.btn-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  animation: spin 0.7s linear infinite;
+}
+
 .btn.secondary {
   background: #0f766e;
 }
@@ -108,6 +123,21 @@ select {
 pre {
   overflow: auto;
   white-space: pre-wrap;
+}
+
+.log-panel {
+  margin: 0;
+  max-height: 280px;
+  overflow: auto;
+  font-family: "IBM Plex Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .actions {

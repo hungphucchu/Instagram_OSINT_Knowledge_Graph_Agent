@@ -38,6 +38,22 @@ export type PipelineFullResponse = {
   quality: Record<string, unknown>;
 };
 
+export type PipelineFullJobSubmitResponse = {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  created_at: string;
+};
+
+export type PipelineFullJobStatusResponse = {
+  job_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error?: string | null;
+  result?: PipelineFullResponse | null;
+};
+
 export type GraphEntityRow = {
   node_id: string;
   display_name: string;
