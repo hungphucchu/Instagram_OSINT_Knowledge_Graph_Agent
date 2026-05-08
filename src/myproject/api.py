@@ -42,6 +42,16 @@ configure_logging()
 LOG = logging.getLogger("myproject.api")
 
 
+def _is_dependency_not_configured_error(exc: Exception) -> bool:
+    """Classify infra/config errors that should surface as HTTP 503."""
+    message = str(exc)
+    return (
+        "required for GRAPH_BACKEND=neo4j" in message
+        or "GRAPH_BACKEND must be neo4j" in message
+        or "neo4j package is required for GRAPH_BACKEND=neo4j" in message
+    )
+
+
 # ---------------------------------------------------------------------------
 # Pydantic request / response models — match docs/SPEC.md §4.1 exactly.
 # ---------------------------------------------------------------------------
@@ -185,6 +195,30 @@ def query(payload: QueryIn) -> JSONResponse:
         return JSONResponse(
             {"error": "The model service is not configured. Contact the operator."},
             status_code=503,
+        )
+    except ValueError as exc:
+        if _is_dependency_not_configured_error(exc):
+            log_event(LOG, "dependency_not_configured", level=logging.ERROR, error=str(exc))
+            return JSONResponse(
+                {"error": "The graph service is not configured. Contact the operator."},
+                status_code=503,
+            )
+        log_event(LOG, "query_failed", level=logging.ERROR, error=str(exc))
+        return JSONResponse(
+            {"error": "Unexpected server error while answering the question."},
+            status_code=500,
+        )
+    except ImportError as exc:
+        if _is_dependency_not_configured_error(exc):
+            log_event(LOG, "dependency_not_configured", level=logging.ERROR, error=str(exc))
+            return JSONResponse(
+                {"error": "The graph service is not configured. Contact the operator."},
+                status_code=503,
+            )
+        log_event(LOG, "query_failed", level=logging.ERROR, error=str(exc))
+        return JSONResponse(
+            {"error": "Unexpected server error while answering the question."},
+            status_code=500,
         )
     except Exception as exc:  # pragma: no cover - safety net
         log_event(LOG, "query_failed", level=logging.ERROR, error=str(exc))
